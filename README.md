@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Smile — Verdulería Digital
 
-## Getting Started
+Plataforma de catálogo y pedidos para **Smile**, verdulería chilena con canal minorista y mayorista.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router) + React 19 + TypeScript
+- **Tailwind CSS 4** con tokens de diseño en CSS variables
+- **Supabase** (Postgres + Realtime + Storage)
+- **Zustand** para estado del carrito
+- **Anthropic SDK** para agente IA con tool calling
+- **Playwright** para tests e2e
+
+## Setup
 
 ```bash
+# 1. Instalar dependencias
+npm install
+
+# 2. Copiar variables de entorno
+cp .env.example .env.local
+# Completar con tus credenciales de Supabase y Anthropic
+
+# 3. Crear tablas en Supabase
+# Ejecutar en orden en el SQL Editor de Supabase:
+#   supabase/migrations/001_initial_schema.sql
+#   supabase/migrations/002_seed_productos.sql
+
+# 4. Iniciar dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Estructura
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+src/
+  app/
+    page.tsx                  # Catálogo minorista (home)
+    mayorista/page.tsx        # Catálogo mayorista B2B
+    admin/pedidos/page.tsx    # Panel admin (protegido)
+    api/
+      chat/route.ts           # Agente IA (streaming)
+      pedidos/route.ts        # CRUD pedidos
+  components/
+    catalog/                  # Grid, ProductCard, filtros, buscador
+    cart/                     # Drawer carrito + WhatsApp
+    chat/                     # Widget IA flotante
+    layout/                   # Header, Footer, ContactBar
+    mayorista/                # Catálogo mayorista + descuentos
+  lib/
+    supabase/                 # Clientes server/browser + tipos
+    ai/                       # System prompt + tools del agente
+    whatsapp.ts               # Builder de mensaje WhatsApp
+    onedate.ts                # Stub API One Date (facturación)
+    utils.ts                  # cn, formatPrice, slugify
+  store/
+    cart.ts                   # Zustand
+  data/
+    productos.seed.ts         # Seed TypeScript
+supabase/
+  migrations/                 # SQL del esquema + seed
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Funcionalidades
 
-## Learn More
+- Catálogo minorista con hero, búsqueda en tiempo real, filtros por categoría
+- Catálogo mayorista con tabla de descuentos por volumen
+- Carrito visual con drawer lateral y salida a WhatsApp
+- Agente IA 24/7 con tool calling (buscar productos, armar pedidos)
+- Panel admin con pedidos en tiempo real (Supabase Realtime) + edición de productos
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Optimizado para **Vercel**. Configurar las variables de entorno en el dashboard de Vercel.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Desarrollado con IA · nico.agenteia

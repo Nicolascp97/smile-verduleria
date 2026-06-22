@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <rect width="200" height="200" fill="#ECFDF5"/>
+  <ellipse cx="100" cy="90" rx="30" ry="50" fill="#74C69D" opacity="0.5" transform="rotate(-15 100 90)"/>
+  <ellipse cx="110" cy="85" rx="25" ry="45" fill="#52B788" opacity="0.4" transform="rotate(10 110 85)"/>
+  <text x="100" y="170" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#1F4B35">Hierba</text>
+</svg>

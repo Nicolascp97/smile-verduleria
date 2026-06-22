@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <rect width="200" height="200" fill="#FEF9C3"/>
+  <circle cx="80" cy="95" r="18" fill="#A16207" opacity="0.4"/>
+  <circle cx="105" cy="80" r="15" fill="#CA8A04" opacity="0.4"/>
+  <circle cx="120" cy="105" r="17" fill="#A16207" opacity="0.3"/>
+  <text x="100" y="170" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#713F12">Legumbre</text>
+</svg>
