@@ -9,15 +9,15 @@
 ## Importante (para completar la experiencia)
 
 - [ ] **Split real minorista/mayorista** — qué productos van en cada catálogo (actualmente todos están en ambos)
-- [ ] **Horario de atención** exacto (actualmente: Lun-Vie 8-20, Sáb 8-18)
-- [ ] **Zonas y costos de envío** — las zonas del selector son placeholder
 - [ ] **Tabla de descuentos por volumen** — umbrales y porcentajes reales (actualmente placeholder: 5%, 10%, 15%)
+- [x] ~~**Zonas y costos de envío**~~ — RESUELTO (jun 2026): particulares sábado $2.990; empresas mar/mié/vie, gratis sobre $50.000. Ver `src/lib/despacho.ts`
+- [ ] **Anticipación pedido particulares** — para empresas es 1 día antes (15:00); falta confirmar si particulares tiene corte similar
 
 ## Branding
 
 - [ ] **Logo** de Smile (actualmente se usa emoji 🌿 como placeholder)
 - [ ] **Nombre exacto del negocio** — ¿"Smile", "Smile Verdulería", otro?
-- [ ] **Datos de contacto** — dirección física, redes sociales, email
+- [ ] **Teléfono/email** de contacto (Instagram ya cargado: @smile.verdurasenruta)
 - [ ] **Fotos reales** de productos (actualmente placeholders SVG por categoría)
 
 ## Opcional (regalo)

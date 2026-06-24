@@ -1,7 +1,9 @@
 "use client";
 
 import { ProductGrid } from "@/components/catalog/ProductGrid";
-import { Building2, Truck, Package, BadgePercent } from "lucide-react";
+import { Building2, Truck, Package, Clock, CalendarDays, MapPin } from "lucide-react";
+import { DESPACHO_EMPRESAS } from "@/lib/despacho";
+import { formatPrice } from "@/lib/utils";
 import type { Producto, DescuentoVolumen } from "@/lib/supabase/types";
 
 interface CatalogoMayoristaProps {
@@ -30,8 +32,8 @@ export function CatalogoMayorista({
             para tu negocio
           </h1>
           <p className="text-gray-400 text-lg max-w-2xl mb-8">
-            Restaurantes, minimarkets y casinos. Productos por caja, saco y
-            malla con precios diferenciados y descuentos por volumen.
+            {DESPACHO_EMPRESAS.perfiles}. Productos por caja, saco y malla con
+            precios diferenciados y despacho a tu negocio.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl">
@@ -40,19 +42,61 @@ export function CatalogoMayorista({
               <span className="text-sm">Formatos por caja, saco y malla</span>
             </div>
             <div className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
-              <BadgePercent size={20} className="text-green-500 shrink-0" />
-              <span className="text-sm">Descuentos por volumen</span>
+              <Truck size={20} className="text-green-500 shrink-0" />
+              <span className="text-sm">
+                Despacho gratis sobre {formatPrice(DESPACHO_EMPRESAS.despachoGratisDesde)}
+              </span>
             </div>
             <div className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
-              <Truck size={20} className="text-green-500 shrink-0" />
-              <span className="text-sm">Despacho coordinado</span>
+              <CalendarDays size={20} className="text-green-500 shrink-0" />
+              <span className="text-sm">Reparto martes, miércoles y viernes</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Tabla de descuentos */}
+      {/* Días y zonas de despacho */}
       <section className="max-w-7xl mx-auto px-4 py-12">
+        <h2 className="font-heading text-2xl font-bold text-ink mb-6">
+          Días y zonas de despacho
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {DESPACHO_EMPRESAS.rutas.map((ruta) => (
+            <div
+              key={ruta.dias}
+              className="bg-surface rounded-2xl border border-border p-5"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarDays size={20} className="text-green-700 shrink-0" />
+                <h3 className="font-heading font-semibold text-ink">
+                  {ruta.dias}
+                </h3>
+              </div>
+              <div className="flex items-start gap-2">
+                <MapPin size={16} className="text-muted shrink-0 mt-0.5" />
+                <p className="text-sm text-muted">{ruta.comunas.join(" · ")}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex items-center gap-3 bg-green-50 rounded-xl px-4 py-3 flex-1">
+            <Clock size={20} className="text-green-700 shrink-0" />
+            <p className="text-sm text-ink">
+              Horario de despacho: <strong>{DESPACHO_EMPRESAS.horario}</strong>
+            </p>
+          </div>
+          <div className="flex items-center gap-3 bg-green-50 rounded-xl px-4 py-3 flex-1">
+            <Truck size={20} className="text-green-700 shrink-0" />
+            <p className="text-sm text-ink">{DESPACHO_EMPRESAS.anticipacion}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Tabla de descuentos */}
+      <section className="max-w-7xl mx-auto px-4 py-12 pt-0">
         <h2 className="font-heading text-2xl font-bold text-ink mb-6">
           Descuentos por volumen
         </h2>

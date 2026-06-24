@@ -7,6 +7,18 @@ import { AI_TOOLS } from "@/lib/ai/tools";
 const anthropic = new Anthropic();
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
 
+function normalizarBusqueda(query: string): string {
+  let q = query.trim().toLowerCase();
+  if (q.endsWith("ces")) {
+    q = q.slice(0, -3) + "z";
+  } else if (q.endsWith("es")) {
+    q = q.slice(0, -2);
+  } else if (q.endsWith("s")) {
+    q = q.slice(0, -1);
+  }
+  return q;
+}
+
 async function handleToolCall(
   name: string,
   input: Record<string, unknown>
@@ -15,19 +27,27 @@ async function handleToolCall(
 
   switch (name) {
     case "buscar_productos": {
-      let query = supabase
-        .from("productos")
-        .select("id,nombre,categoria,formato,formato_detalle,stock,precio_minorista,precio_mayorista,disponible_minorista,disponible_mayorista")
-        .eq("activo", true);
-
-      if (input.categoria) {
-        query = query.eq("categoria", input.categoria as string);
-      }
+      const campos = "id,nombre,categoria,formato,formato_detalle,stock,precio_minorista,precio_mayorista,disponible_minorista,disponible_mayorista";
 
       if (input.query) {
-        query = query.ilike("nombre", `%${input.query}%`);
+        const raw = (input.query as string).trim();
+        const normalizado = normalizarBusqueda(raw);
+        const variantes = [raw, ...(normalizado !== raw.toLowerCase() ? [normalizado] : [])];
+
+        for (const termino of variantes) {
+          let q = supabase.from("productos").select(campos).eq("activo", true);
+          if (input.categoria) q = q.eq("categoria", input.categoria as string);
+          q = q.ilike("nombre", `%${termino}%`);
+          const { data, error } = await q.limit(20);
+          if (error) return JSON.stringify({ error: error.message });
+          if (data?.length) return JSON.stringify(data);
+        }
+
+        return JSON.stringify({ mensaje: "No se encontraron productos con esa búsqueda." });
       }
 
+      let query = supabase.from("productos").select(campos).eq("activo", true);
+      if (input.categoria) query = query.eq("categoria", input.categoria as string);
       const { data, error } = await query.limit(20);
       if (error) return JSON.stringify({ error: error.message });
       if (!data?.length) return JSON.stringify({ mensaje: "No se encontraron productos con esa búsqueda." });

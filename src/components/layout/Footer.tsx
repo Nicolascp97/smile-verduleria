@@ -1,4 +1,5 @@
-import { Phone, Mail, MapPin } from "lucide-react";
+import { Phone, AtSign, MapPin } from "lucide-react";
+import { INSTAGRAM_URL, INSTAGRAM_HANDLE } from "@/lib/despacho";
 
 export function Footer() {
   return (
@@ -25,8 +26,15 @@ export function Footer() {
                 <span>+56 9 0000 0000</span>
               </li>
               <li className="flex items-center gap-2">
-                <Mail size={14} aria-hidden="true" />
-                <span>contacto@smile.cl</span>
+                <AtSign size={14} aria-hidden="true" />
+                <a
+                  href={INSTAGRAM_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors duration-150"
+                >
+                  {INSTAGRAM_HANDLE}
+                </a>
               </li>
               <li className="flex items-center gap-2">
                 <MapPin size={14} aria-hidden="true" />
@@ -37,12 +45,12 @@ export function Footer() {
 
           <div>
             <h4 className="font-heading text-lg font-semibold text-white mb-3">
-              Horarios
+              Despacho
             </h4>
             <ul className="space-y-1 text-sm">
-              <li>Lunes a Viernes: 8:00 – 20:00</li>
-              <li>Sábado: 8:00 – 18:00</li>
-              <li>Domingo: Cerrado</li>
+              <li>Particulares: sábado</li>
+              <li>Empresas: martes, miércoles y viernes</li>
+              <li>Horario: 9:00 – 17:00</li>
             </ul>
           </div>
         </div>

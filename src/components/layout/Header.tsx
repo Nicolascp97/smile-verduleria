@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingCart, Menu, X } from "lucide-react";
+import { ShoppingCart, Menu, X, Settings } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -46,7 +46,15 @@ export function Header() {
           </Link>
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <Link
+            href="/admin/pedidos"
+            className="p-2 rounded-lg hover:bg-subtle transition-colors duration-150"
+            aria-label="Panel de administración"
+          >
+            <Settings size={22} className="text-muted" />
+          </Link>
+
           <button
             onClick={openCart}
             className="relative p-2 rounded-lg hover:bg-subtle transition-colors duration-150"

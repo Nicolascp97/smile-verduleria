@@ -8,7 +8,7 @@ export function ContactBar() {
       <div className="max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-1">
         <span className="flex items-center gap-1.5">
           <Clock size={14} aria-hidden="true" />
-          <span>Lun-Sáb 8:00–20:00</span>
+          <span>Despacho 9:00–17:00</span>
         </span>
         <span className="flex items-center gap-1.5">
           <Phone size={14} aria-hidden="true" />

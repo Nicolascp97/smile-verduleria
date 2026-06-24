@@ -3,6 +3,8 @@
 import { ProductGrid } from "./ProductGrid";
 import { ProductCard } from "./ProductCard";
 import { Truck } from "lucide-react";
+import { DESPACHO_PARTICULARES } from "@/lib/despacho";
+import { formatPrice } from "@/lib/utils";
 import type { Producto } from "@/lib/supabase/types";
 
 interface CatalogoMinoristaProps {
@@ -47,11 +49,11 @@ export function CatalogoMinorista({ productos }: CatalogoMinoristaProps) {
 
       {/* Banner de delivery */}
       <section className="bg-accent-warm text-white">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-center gap-3">
-          <Truck size={24} aria-hidden="true" />
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-center gap-3 text-center">
+          <Truck size={24} aria-hidden="true" className="shrink-0" />
           <p className="font-medium text-sm md:text-base">
-            Despacho a domicilio en Región Metropolitana · Consulta zonas y
-            costos
+            Despacho a domicilio los <strong>{DESPACHO_PARTICULARES.dia.toLowerCase()}s</strong> ·{" "}
+            {formatPrice(DESPACHO_PARTICULARES.costo)} · {DESPACHO_PARTICULARES.comunas.length} comunas
           </p>
         </div>
       </section>

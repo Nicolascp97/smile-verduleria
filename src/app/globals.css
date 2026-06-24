@@ -69,6 +69,21 @@ input:focus, textarea:focus, select:focus, button:focus-visible {
   outline-offset: 2px;
 }
 
+/* Input reutilizable del panel admin */
+.admin-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  font-size: 0.875rem;
+  background: var(--surface);
+  color: var(--ink);
+  min-height: 40px;
+}
+.admin-input:focus {
+  border-color: var(--green-600);
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }

@@ -4,6 +4,7 @@ import { X, Trash2, Minus, Plus, MessageCircle } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { formatPrice, cn } from "@/lib/utils";
 import { buildWhatsAppMessage, getWhatsAppUrl } from "@/lib/whatsapp";
+import { DESPACHO_PARTICULARES } from "@/lib/despacho";
 import { useState } from "react";
 
 export function CartDrawer() {
@@ -226,7 +227,7 @@ export function CartDrawer() {
                 </div>
                 <div>
                   <label htmlFor="cart-zona" className="text-sm font-medium text-ink block mb-1">
-                    Zona de envío
+                    Comuna de despacho
                   </label>
                   <select
                     id="cart-zona"
@@ -234,15 +235,18 @@ export function CartDrawer() {
                     onChange={(e) => setZonaEnvio(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl border border-border text-sm focus:border-green-600 bg-surface"
                   >
-                    <option value="">Seleccionar zona</option>
-                    <option value="Santiago Centro">Santiago Centro</option>
-                    <option value="Providencia">Providencia</option>
-                    <option value="Las Condes">Las Condes</option>
-                    <option value="Ñuñoa">Ñuñoa</option>
-                    <option value="Macul">Macul</option>
-                    <option value="La Florida">La Florida</option>
-                    <option value="Otra">Otra zona</option>
+                    <option value="">Seleccionar comuna</option>
+                    {DESPACHO_PARTICULARES.comunas.map((comuna) => (
+                      <option key={comuna} value={comuna}>
+                        {comuna}
+                      </option>
+                    ))}
                   </select>
+                  <p className="text-xs text-muted mt-1.5 flex items-start gap-1">
+                    <span aria-hidden="true">🚚</span>
+                    Despacho a domicilio los <strong>{DESPACHO_PARTICULARES.dia.toLowerCase()}s</strong> ·{" "}
+                    {formatPrice(DESPACHO_PARTICULARES.costo)}
+                  </p>
                 </div>
                 <div>
                   <label htmlFor="cart-notas" className="text-sm font-medium text-ink block mb-1">
