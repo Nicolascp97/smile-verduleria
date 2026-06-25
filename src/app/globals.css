@@ -110,3 +110,29 @@ input:focus, textarea:focus, select:focus, button:focus-visible {
 .animate-slide-out-right {
   animation: slideOutRight 180ms ease-in;
 }
+
+@keyframes smileBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+@keyframes bubbleIn {
+  0% { opacity: 0; transform: translateY(8px) scale(0.9); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-smile-bounce {
+  animation: smileBounce 2s ease-in-out infinite;
+}
+
+.animate-bubble-in {
+  animation: bubbleIn 400ms ease-out;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

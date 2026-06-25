@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="14" fill="#8FA68B"/>
+  <g transform="translate(32, 18)" fill="white">
+    <path d="M-2,-8 C-2,-8 -8,2 -2,10 C0,6 1,2 2,-2 C3,-5 2,-8 -2,-8Z" opacity="0.85"/>
+    <path d="M2,-10 C2,-10 8,0 4,12 C2,8 1,4 0,0 C-1,-4 0,-8 2,-10Z"/>
+  </g>
+  <text x="32" y="42" text-anchor="middle" font-family="Georgia, serif" font-size="16" font-weight="700" fill="white" letter-spacing="1">SMILE</text>
+  <text x="32" y="54" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" fill="white" letter-spacing="3" opacity="0.8">FRUITS</text>
+</svg>

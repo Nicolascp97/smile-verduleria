@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Phone, AtSign, MapPin } from "lucide-react";
 import { INSTAGRAM_URL, INSTAGRAM_HANDLE } from "@/lib/despacho";
 
@@ -7,9 +8,13 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <h3 className="font-heading text-xl font-bold text-white mb-3">
-              Smile
-            </h3>
+            <Image
+              src="/logo-smile.jpeg"
+              alt="Smile Fruits"
+              width={160}
+              height={80}
+              className="h-14 w-auto rounded-xl object-contain mb-3"
+            />
             <p className="text-sm leading-relaxed">
               Frutas y verduras frescas directo a tu casa. Calidad garantizada
               para familias y empresas.
@@ -23,7 +28,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li className="flex items-center gap-2">
                 <Phone size={14} aria-hidden="true" />
-                <span>+56 9 0000 0000</span>
+                <span>+56 9 5693 6847</span>
               </li>
               <li className="flex items-center gap-2">
                 <AtSign size={14} aria-hidden="true" />

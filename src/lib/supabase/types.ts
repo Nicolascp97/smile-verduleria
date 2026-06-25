@@ -77,6 +77,22 @@ export interface DescuentoVolumen {
   descripcion: string;
 }
 
+export interface Especialidad {
+  id: string;
+  nombre: string;
+  slug: string;
+  emoji: string;
+  color_from: string;
+  color_to: string;
+  descripcion: string | null;
+  orden: number;
+  activo: boolean;
+}
+
+export interface EspecialidadConConteo extends Especialidad {
+  producto_count: number;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -94,6 +110,16 @@ export interface Database {
         Row: DescuentoVolumen;
         Insert: Omit<DescuentoVolumen, "id">;
         Update: Partial<Omit<DescuentoVolumen, "id">>;
+      };
+      especialidades: {
+        Row: Especialidad;
+        Insert: Omit<Especialidad, "id">;
+        Update: Partial<Omit<Especialidad, "id">>;
+      };
+      producto_especialidad: {
+        Row: { id: string; producto_id: string; especialidad_id: string };
+        Insert: Omit<{ id: string; producto_id: string; especialidad_id: string }, "id">;
+        Update: Partial<Omit<{ id: string; producto_id: string; especialidad_id: string }, "id">>;
       };
     };
   };

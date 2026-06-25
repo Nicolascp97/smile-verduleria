@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ShoppingCart, Menu, X, Settings } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { useState } from "react";
@@ -15,12 +16,14 @@ export function Header() {
     <header className="bg-surface sticky top-0 z-40 border-b border-border shadow-sm">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <span className="text-3xl" role="img" aria-label="Hoja verde">
-            🌿
-          </span>
-          <span className="font-heading text-2xl font-bold text-ink">
-            Smile
-          </span>
+          <Image
+            src="/logo-smile.jpeg"
+            alt="Smile Fruits"
+            width={120}
+            height={60}
+            className="h-10 w-auto rounded-lg object-contain"
+            priority
+          />
         </Link>
 
         <nav

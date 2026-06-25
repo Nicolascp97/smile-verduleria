@@ -13,10 +13,10 @@ export function ContactBar() {
         <span className="flex items-center gap-1.5">
           <Phone size={14} aria-hidden="true" />
           <a
-            href="tel:+56900000000"
+            href="tel:+56956936847"
             className="hover:text-ink transition-colors duration-150"
           >
-            +56 9 0000 0000
+            +56 9 5693 6847
           </a>
         </span>
         <span className="flex items-center gap-1.5">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Loader2 } from "lucide-react";
+import { X, Send, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/store/cart";
 
@@ -12,12 +12,14 @@ interface Message {
 
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
+  const [showBubble, setShowBubble] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { addItem } = useCartStore();
+  const bubbleTriggered = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -32,6 +34,30 @@ export function ChatWidget() {
       inputRef.current.focus();
     }
   }, [open]);
+
+  useEffect(() => {
+    if (bubbleTriggered.current) return;
+
+    const timer = setTimeout(() => {
+      if (!bubbleTriggered.current) {
+        bubbleTriggered.current = true;
+        setShowBubble(true);
+      }
+    }, 3000);
+
+    const onScroll = () => {
+      if (!bubbleTriggered.current && window.scrollY > 100) {
+        bubbleTriggered.current = true;
+        setShowBubble(true);
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
 
   const handleSend = async () => {
     const text = input.trim();
@@ -104,21 +130,55 @@ export function ChatWidget() {
 
   return (
     <>
-      {/* Botón flotante */}
+      {/* Botón flotante — personaje Smile */}
       {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          className={cn(
-            "fixed bottom-6 right-6 z-50",
-            "w-14 h-14 rounded-full bg-green-700 text-white shadow-lg",
-            "hover:bg-green-600 active:scale-95",
-            "flex items-center justify-center",
-            "transition-all duration-200"
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+          {showBubble && (
+            <div className="bg-surface rounded-2xl rounded-br-sm shadow-md border border-border px-4 py-2.5 max-w-[200px] animate-bubble-in">
+              <p className="text-sm font-medium text-ink leading-snug">
+                ¿Te ayudo con tu pedido?
+              </p>
+            </div>
           )}
-          aria-label="Abrir chat de asistencia"
-        >
-          <MessageCircle size={24} />
-        </button>
+          <button
+            onClick={() => setOpen(true)}
+            className="group relative w-16 h-16 active:scale-90 transition-transform duration-150 cursor-pointer animate-smile-bounce"
+            aria-label="Abrir chat de asistencia"
+          >
+            <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-lg">
+              {/* Sombra suave */}
+              <ellipse cx="40" cy="74" rx="22" ry="4" fill="#000" opacity="0.08" />
+              {/* Cuerpo — naranja cálida */}
+              <circle cx="40" cy="42" r="28" fill="#F97316" />
+              <circle cx="40" cy="42" r="28" fill="url(#smileGrad)" />
+              {/* Brillo */}
+              <ellipse cx="32" cy="32" rx="10" ry="8" fill="white" opacity="0.18" transform="rotate(-20 32 32)" />
+              {/* Hojitas */}
+              <path d="M40 14 C38 8 42 2 48 4 C46 10 44 14 40 14Z" fill="#059669" />
+              <path d="M40 14 C36 10 30 6 28 8 C30 12 36 14 40 14Z" fill="#10B981" />
+              {/* Tallo */}
+              <rect x="39" y="12" width="2.5" height="5" rx="1" fill="#065F46" />
+              {/* Ojos */}
+              <circle cx="32" cy="40" r="3.5" fill="#1C1917" />
+              <circle cx="48" cy="40" r="3.5" fill="#1C1917" />
+              {/* Brillitos ojos */}
+              <circle cx="33.5" cy="38.5" r="1.2" fill="white" />
+              <circle cx="49.5" cy="38.5" r="1.2" fill="white" />
+              {/* Sonrisa grande — Smile! */}
+              <path d="M30 49 Q34 57 40 57 Q46 57 50 49" stroke="#1C1917" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+              {/* Mejillas rosadas */}
+              <circle cx="26" cy="48" r="4" fill="#FB923C" opacity="0.5" />
+              <circle cx="54" cy="48" r="4" fill="#FB923C" opacity="0.5" />
+              {/* Gradiente */}
+              <defs>
+                <radialGradient id="smileGrad" cx="0.4" cy="0.35" r="0.65">
+                  <stop offset="0%" stopColor="#FDBA74" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#F97316" stopOpacity="0" />
+                </radialGradient>
+              </defs>
+            </svg>
+          </button>
+        </div>
       )}
 
       {/* Panel de chat */}
@@ -137,10 +197,20 @@ export function ChatWidget() {
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-green-700 text-white rounded-t-2xl">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-100 animate-pulse" />
+            <div className="flex items-center gap-2.5">
+              <svg viewBox="0 0 80 80" fill="none" className="w-7 h-7 shrink-0" aria-hidden="true">
+                <circle cx="40" cy="42" r="28" fill="#F97316" />
+                <path d="M40 14 C38 8 42 2 48 4 C46 10 44 14 40 14Z" fill="#34D399" />
+                <path d="M40 14 C36 10 30 6 28 8 C30 12 36 14 40 14Z" fill="#6EE7B7" />
+                <rect x="39" y="12" width="2.5" height="5" rx="1" fill="#065F46" />
+                <circle cx="32" cy="40" r="3" fill="#1C1917" />
+                <circle cx="48" cy="40" r="3" fill="#1C1917" />
+                <circle cx="33.2" cy="38.8" r="1" fill="white" />
+                <circle cx="49.2" cy="38.8" r="1" fill="white" />
+                <path d="M30 49 Q34 57 40 57 Q46 57 50 49" stroke="#1C1917" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+              </svg>
               <span className="font-heading font-semibold text-sm">
-                Asistente Smile
+                Smile
               </span>
             </div>
             <button

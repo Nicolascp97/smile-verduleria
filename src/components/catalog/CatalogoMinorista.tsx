@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { ProductGrid } from "./ProductGrid";
 import { ProductCard } from "./ProductCard";
-import { Truck } from "lucide-react";
-import { DESPACHO_PARTICULARES } from "@/lib/despacho";
+import { Truck, CalendarDays, MapPin, Clock, Building2, User, Info, ShoppingBasket, MessageCircle } from "lucide-react";
+import { DESPACHO_PARTICULARES, DESPACHO_EMPRESAS } from "@/lib/despacho";
 import { formatPrice } from "@/lib/utils";
 import type { Producto } from "@/lib/supabase/types";
 
@@ -17,32 +18,79 @@ export function CatalogoMinorista({ productos }: CatalogoMinoristaProps) {
   return (
     <div>
       {/* Hero */}
-      <section className="bg-surface border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 py-16 md:py-24 text-center">
-          <p className="text-green-700 text-sm font-semibold tracking-widest uppercase mb-3">
-            Fresco · Local · Natural
+      <section className="relative overflow-hidden bg-white flex items-center">
+        <Image
+          src="/hero/hero-02-produce-flatlay-soft.webp"
+          alt="Frutas y verduras frescas"
+          fill
+          priority
+          className="object-contain object-center"
+          sizes="100vw"
+          quality={90}
+        />
+
+        <div className="relative w-full max-w-7xl mx-auto px-4 py-20 md:py-28 text-center">
+          <p className="text-green-700 text-xs font-semibold tracking-[0.25em] uppercase mb-4">
+            Confianza &ndash; Calidad &ndash; Frescura
           </p>
-          <h1 className="font-heading text-4xl md:text-6xl font-bold leading-tight mb-4 text-ink">
-            Frescura directo
-            <br />a tu mesa
+          <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl font-bold leading-[1.1] mb-5 text-ink">
+            Proveedores de Restaurantes,
+            <br />Empresas y Particulares
           </h1>
-          <p className="text-muted text-lg md:text-xl max-w-2xl mx-auto mb-8">
-            Frutas, verduras, hierbas y más. Arma tu pedido y recíbelo en la
-            puerta de tu casa.
+          <p className="text-muted text-lg md:text-xl max-w-xl mx-auto mb-10 leading-relaxed">
+            Arma tu pedido y recíbelo donde lo necesites.
           </p>
-          <div className="flex flex-wrap justify-center gap-4">
+
+          {/* Categorías */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto mb-8">
             <a
               href="#catalogo"
-              className="inline-flex items-center gap-2 bg-green-700 hover:bg-green-600 text-white font-semibold px-8 py-3.5 rounded-xl transition-colors duration-150 min-h-[48px]"
+              className="bg-white/90 backdrop-blur-sm border-2 border-green-700 rounded-2xl px-4 py-5 flex flex-col items-center gap-2 hover:bg-white hover:shadow-lg transition-all duration-200"
             >
-              Ver Catálogo
+              <User size={28} className="text-green-700" />
+              <span className="font-semibold text-ink text-sm">Particular</span>
             </a>
             <a
               href="/mayorista"
-              className="inline-flex items-center gap-2 border-2 border-border hover:border-ink text-ink font-semibold px-8 py-3.5 rounded-xl transition-colors duration-150 min-h-[48px]"
+              className="bg-white/90 backdrop-blur-sm border border-border rounded-2xl px-4 py-5 flex flex-col items-center gap-2 hover:bg-white hover:shadow-lg transition-all duration-200"
             >
-              Soy Mayorista
+              <span className="text-2xl">🇨🇱</span>
+              <span className="font-semibold text-ink text-sm text-center">Gastronomía Chilena</span>
             </a>
+            <a
+              href="/mayorista"
+              className="bg-white/90 backdrop-blur-sm border border-border rounded-2xl px-4 py-5 flex flex-col items-center gap-2 hover:bg-white hover:shadow-lg transition-all duration-200"
+            >
+              <span className="text-2xl">🇨🇳🇰🇷</span>
+              <span className="font-semibold text-ink text-sm text-center">Gastronomía China Coreana</span>
+            </a>
+            <a
+              href="/mayorista"
+              className="bg-white/90 backdrop-blur-sm border border-border rounded-2xl px-4 py-5 flex flex-col items-center gap-2 hover:bg-white hover:shadow-lg transition-all duration-200"
+            >
+              <span className="text-2xl">🇵🇪</span>
+              <span className="font-semibold text-ink text-sm text-center">Gastronomía Peruana</span>
+            </a>
+          </div>
+
+          {/* Canastas predeterminadas (debajo de Particular) */}
+          <div className="flex flex-col sm:flex-row justify-center gap-4 max-w-xl mx-auto">
+            <div className="bg-white/90 backdrop-blur-sm border-2 border-green-700 rounded-2xl px-6 py-5 flex items-center gap-4 flex-1 shadow-sm">
+              <ShoppingBasket size={32} className="text-green-700 shrink-0" />
+              <div className="text-left">
+                <p className="font-bold text-ink text-sm">Canasta Básica</p>
+                <p className="text-xs text-muted">Un poco de todo</p>
+                <p className="font-bold text-green-700 text-lg mt-1">{formatPrice(30000)}</p>
+              </div>
+            </div>
+            <div className="bg-white/90 backdrop-blur-sm border-2 border-green-700 rounded-2xl px-6 py-5 flex items-center gap-4 flex-1 shadow-sm">
+              <ShoppingBasket size={32} className="text-green-700 shrink-0" />
+              <div className="text-left">
+                <p className="font-bold text-ink text-sm">Canasta Completa</p>
+                <p className="text-xs text-muted">Más variedad y cantidad</p>
+                <p className="font-bold text-green-700 text-lg mt-1">{formatPrice(50000)}</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -55,6 +103,177 @@ export function CatalogoMinorista({ productos }: CatalogoMinoristaProps) {
             Despacho a domicilio los <strong>{DESPACHO_PARTICULARES.dia.toLowerCase()}s</strong> ·{" "}
             {formatPrice(DESPACHO_PARTICULARES.costo)} · {DESPACHO_PARTICULARES.comunas.length} comunas
           </p>
+        </div>
+      </section>
+
+      {/* Despachos */}
+      <section id="despachos" className="max-w-7xl mx-auto px-4 py-14 md:py-16">
+        <div className="text-center mb-10">
+          <p className="text-green-700 text-xs font-semibold tracking-[0.25em] uppercase mb-3">
+            Cómo funciona
+          </p>
+          <h2 className="font-heading text-2xl md:text-3xl font-bold text-ink mb-3">
+            Despachos
+          </h2>
+          <p className="text-muted max-w-2xl mx-auto">
+            Llevamos frutas y verduras frescas hasta la puerta de tu casa o negocio.
+            Revisa los días, horarios y comunas disponibles.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Particulares */}
+          <div className="bg-surface rounded-2xl border-2 border-green-700 p-6 md:p-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 bg-green-700 text-white text-[11px] font-bold tracking-wider uppercase px-4 py-1.5 rounded-bl-xl">
+              Personas
+            </div>
+
+            <div className="flex items-center gap-3 mb-5">
+              <span className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+                <User size={24} className="text-green-700" />
+              </span>
+              <div>
+                <h3 className="font-heading text-xl font-bold text-ink">
+                  Despacho a Particulares
+                </h3>
+                <p className="text-sm text-muted">Para tu hogar</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 bg-green-50 rounded-xl px-4 py-3">
+                <CalendarDays size={20} className="text-green-700 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-ink text-sm">Solo los días {DESPACHO_PARTICULARES.dia.toLowerCase()}s</p>
+                  <p className="text-xs text-muted mt-0.5">Único día de reparto para hogares</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Clock size={20} className="text-green-700 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-ink text-sm">Horario: {DESPACHO_PARTICULARES.horario}</p>
+                  <p className="text-xs text-muted mt-0.5">Recibe tu pedido durante la mañana o tarde</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Truck size={20} className="text-green-700 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-ink text-sm">Costo de despacho: {formatPrice(DESPACHO_PARTICULARES.costo)}</p>
+                  <p className="text-xs text-muted mt-0.5">Tarifa fija por pedido</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <MapPin size={20} className="text-green-700 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-ink text-sm mb-1">Comunas disponibles</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DESPACHO_PARTICULARES.comunas.map((comuna) => (
+                      <span
+                        key={comuna}
+                        className="inline-block bg-green-50 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full"
+                      >
+                        {comuna}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-border">
+              <div className="flex items-start gap-2">
+                <Info size={16} className="text-muted shrink-0 mt-0.5" />
+                <p className="text-xs text-muted leading-relaxed">
+                  Si tu comuna no aparece en la lista, por ahora no llegamos a esa zona,
+                  pero estamos ampliando la cobertura. Escríbenos por WhatsApp para más info.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Empresas */}
+          <div className="bg-surface rounded-2xl border border-border p-6 md:p-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 bg-gray-900 text-white text-[11px] font-bold tracking-wider uppercase px-4 py-1.5 rounded-bl-xl">
+              Empresas
+            </div>
+
+            <div className="flex items-center gap-3 mb-5">
+              <span className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                <Building2 size={24} className="text-gray-700" />
+              </span>
+              <div>
+                <h3 className="font-heading text-xl font-bold text-ink">
+                  Despacho a Empresas
+                </h3>
+                <p className="text-sm text-muted">{DESPACHO_EMPRESAS.perfiles}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 bg-subtle rounded-xl px-4 py-3">
+                <CalendarDays size={20} className="text-gray-700 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-ink text-sm">{DESPACHO_EMPRESAS.dias}</p>
+                  <p className="text-xs text-muted mt-0.5">Despacho a todas las comunas</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <MapPin size={20} className="text-gray-700 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-ink text-sm mb-1">Comunas disponibles</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DESPACHO_EMPRESAS.comunas.map((comuna) => (
+                      <span
+                        key={comuna}
+                        className="inline-block bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full"
+                      >
+                        {comuna}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Clock size={20} className="text-gray-700 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-ink text-sm">Horario: {DESPACHO_EMPRESAS.horario}</p>
+                  <p className="text-xs text-muted mt-0.5">{DESPACHO_EMPRESAS.anticipacion}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Truck size={20} className="text-gray-700 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-ink text-sm">
+                    Gratis en pedidos sobre {formatPrice(DESPACHO_EMPRESAS.despachoGratisDesde)}
+                  </p>
+                  <p className="text-xs text-muted mt-0.5">Sin costo de despacho para nuestros clientes frecuentes</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                <MessageCircle size={20} className="text-green-700 shrink-0 mt-0.5" />
+                <p className="font-semibold text-green-700 text-sm">
+                  Coordine entrega y horario directamente con nuestro vendedor por WhatsApp
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-border">
+              <a
+                href="/mayorista"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-green-700 hover:text-green-600 transition-colors duration-150"
+              >
+                Ver catálogo mayorista
+                <span aria-hidden="true">&rarr;</span>
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 

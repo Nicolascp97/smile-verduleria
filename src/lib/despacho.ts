@@ -22,32 +22,17 @@ export const DESPACHO_EMPRESAS = {
   horario: "9:00 a 17:00",
   despachoGratisDesde: 50000,
   anticipacion: "El pedido se hace con 1 día de anticipación, antes de las 15:00",
-  rutas: [
-    {
-      dias: "Martes y Viernes",
-      comunas: [
-        "Huechuraba",
-        "Recoleta",
-        "Conchalí",
-        "La Cisterna",
-        "La Florida",
-        "Puente Alto",
-        "Santiago Centro",
-        "Providencia",
-        "Las Condes",
-      ],
-    },
-    {
-      dias: "Miércoles",
-      comunas: [
-        "Huechuraba",
-        "Recoleta",
-        "Conchalí",
-        "Santiago Centro",
-        "Providencia",
-        "Las Condes",
-      ],
-    },
+  dias: "Martes, miércoles, jueves y sábado",
+  comunas: [
+    "Huechuraba",
+    "Recoleta",
+    "Conchalí",
+    "La Cisterna",
+    "La Florida",
+    "Puente Alto",
+    "Santiago Centro",
+    "Providencia",
+    "Las Condes",
   ],
 } as const;
 

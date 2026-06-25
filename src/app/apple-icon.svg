@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180">
+  <rect width="180" height="180" rx="40" fill="#8FA68B"/>
+  <g transform="translate(90, 50)" fill="white">
+    <path d="M-6,-24 C-6,-24 -24,6 -6,30 C0,18 3,6 6,-6 C9,-15 6,-24 -6,-24Z" opacity="0.85"/>
+    <path d="M6,-30 C6,-30 24,0 12,36 C6,24 3,12 0,0 C-3,-12 0,-24 6,-30Z"/>
+  </g>
+  <text x="90" y="120" text-anchor="middle" font-family="Georgia, serif" font-size="45" font-weight="700" fill="white" letter-spacing="3">SMILE</text>
+  <text x="90" y="152" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="white" letter-spacing="8" opacity="0.8">FRUITS</text>
+</svg>

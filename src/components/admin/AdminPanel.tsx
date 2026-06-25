@@ -33,6 +33,7 @@ import type {
   Producto,
   Categoria,
   Formato,
+  Especialidad,
 } from "@/lib/supabase/types";
 
 const ESTADOS: { value: EstadoPedido; label: string; color: string }[] = [
@@ -73,7 +74,7 @@ export default function AdminPanel() {
   const [filtroEstado, setFiltroEstado] = useState<EstadoPedido | "todos">("todos");
   const [filtroTipo, setFiltroTipo] = useState<"minorista" | "mayorista" | "todos">("todos");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [tab, setTab] = useState<"pedidos" | "productos">("pedidos");
+  const [tab, setTab] = useState<"pedidos" | "productos" | "especialidades">("pedidos");
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
@@ -83,6 +84,11 @@ export default function AdminPanel() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [busquedaProd, setBusquedaProd] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState<Categoria | "todas">("todas");
+
+  const [especialidades, setEspecialidades] = useState<Especialidad[]>([]);
+  const [espProductos, setEspProductos] = useState<Record<string, string[]>>({});
+  const [espExpanded, setEspExpanded] = useState<string | null>(null);
+  const [espBusqueda, setEspBusqueda] = useState("");
 
   const supabaseRef = useRef(createBrowserClient());
 
@@ -117,10 +123,25 @@ export default function AdminPanel() {
     }
   }, [authenticated, password]);
 
+  const fetchEspecialidades = useCallback(async () => {
+    if (!authenticated) return;
+    try {
+      const res = await fetch("/api/especialidades", {
+        headers: { "x-admin-password": password },
+      });
+      const data = await res.json();
+      if (data.especialidades) setEspecialidades(data.especialidades);
+      if (data.productosPorEspecialidad) setEspProductos(data.productosPorEspecialidad);
+    } catch (err) {
+      console.error("Error fetching especialidades:", err);
+    }
+  }, [authenticated, password]);
+
   useEffect(() => {
     if (!authenticated) return;
     fetchPedidos();
     fetchProductos();
+    fetchEspecialidades();
 
     const supabase = supabaseRef.current;
     const channel = supabase
@@ -135,7 +156,7 @@ export default function AdminPanel() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [authenticated, fetchPedidos, fetchProductos]);
+  }, [authenticated, fetchPedidos, fetchProductos, fetchEspecialidades]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,6 +208,19 @@ export default function AdminPanel() {
     });
     setConfirmDelete(null);
     fetchProductos();
+  };
+
+  const handleToggleEspProducto = async (productoId: string, especialidadId: string, isAssigned: boolean) => {
+    await fetch("/api/especialidades", {
+      method: "POST",
+      headers: adminHeaders(),
+      body: JSON.stringify({
+        producto_id: productoId,
+        especialidad_id: especialidadId,
+        action: isAssigned ? "remove" : "add",
+      }),
+    });
+    fetchEspecialidades();
   };
 
   const handleToggleStock = async (id: string, currentStock: number) => {
@@ -278,7 +312,7 @@ export default function AdminPanel() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => { fetchPedidos(); fetchProductos(); }}
+              onClick={() => { fetchPedidos(); fetchProductos(); fetchEspecialidades(); }}
               className="flex items-center gap-2 px-3 py-2 rounded-xl bg-subtle text-ink hover:bg-gray-200 transition-colors duration-150 text-sm min-h-[40px]"
             >
               <RefreshCw size={16} />
@@ -350,6 +384,16 @@ export default function AdminPanel() {
             <Boxes size={16} />
             Productos
           </button>
+          <button
+            onClick={() => setTab("especialidades")}
+            className={cn(
+              "flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-lg font-medium text-sm transition-colors duration-150 min-h-[40px]",
+              tab === "especialidades" ? "bg-green-700 text-white" : "text-muted hover:text-ink"
+            )}
+          >
+            🍽️
+            Especialidades
+          </button>
         </div>
 
         {tab === "pedidos" && (
@@ -387,6 +431,19 @@ export default function AdminPanel() {
             setConfirmDelete={setConfirmDelete}
             onDeleteProduct={handleDeleteProduct}
             onToggleStock={handleToggleStock}
+          />
+        )}
+
+        {tab === "especialidades" && (
+          <EspecialidadesView
+            especialidades={especialidades}
+            espProductos={espProductos}
+            productos={productos}
+            expanded={espExpanded}
+            setExpanded={setEspExpanded}
+            busqueda={espBusqueda}
+            setBusqueda={setEspBusqueda}
+            onToggle={handleToggleEspProducto}
           />
         )}
       </div>
@@ -715,7 +772,7 @@ function ProductoCard({
   onConfirmDelete: () => void;
   onToggleStock: () => void;
 }) {
-  const cat = CATEGORIA_META[p.categoria];
+  const cat = CATEGORIA_META[p.categoria as Categoria] ?? { label: p.categoria, color: "bg-gray-100 text-gray-700" };
   const sinStock = p.stock <= 0;
 
   return (
@@ -811,5 +868,119 @@ function ProductoCard({
         </>
       )}
     </div>
+  );
+}
+
+// ============ Especialidades View ============
+function EspecialidadesView({
+  especialidades, espProductos, productos, expanded, setExpanded,
+  busqueda, setBusqueda, onToggle,
+}: {
+  especialidades: Especialidad[];
+  espProductos: Record<string, string[]>;
+  productos: Producto[];
+  expanded: string | null;
+  setExpanded: (v: string | null) => void;
+  busqueda: string;
+  setBusqueda: (v: string) => void;
+  onToggle: (productoId: string, especialidadId: string, isAssigned: boolean) => void;
+}) {
+  const filteredProductos = useMemo(() => {
+    if (!busqueda.trim()) return productos;
+    const q = busqueda.toLowerCase().trim();
+    return productos.filter((p) => p.nombre.toLowerCase().includes(q));
+  }, [productos, busqueda]);
+
+  return (
+    <>
+      <p className="text-xs text-muted mb-4">
+        {especialidades.length} especialidades configuradas
+      </p>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {especialidades.map((esp) => {
+          const isExpanded = expanded === esp.id;
+          const assignedIds = new Set(espProductos[esp.id] ?? []);
+          const assignedCount = assignedIds.size;
+
+          return (
+            <div key={esp.id} className="bg-surface rounded-2xl border border-border overflow-hidden">
+              <button
+                onClick={() => setExpanded(isExpanded ? null : esp.id)}
+                className="w-full px-5 py-4 flex items-center justify-between gap-3 hover:bg-subtle transition-colors duration-150 text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0"
+                    style={{
+                      background: `linear-gradient(135deg, ${esp.color_from}, ${esp.color_to})`,
+                    }}
+                  >
+                    {esp.emoji}
+                  </span>
+                  <div>
+                    <span className="block font-semibold text-ink">{esp.nombre}</span>
+                    <span className="block text-xs text-muted mt-0.5">
+                      {assignedCount} producto{assignedCount !== 1 ? "s" : ""} asignado{assignedCount !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                </div>
+                {isExpanded ? <ChevronUp size={18} className="text-muted" /> : <ChevronDown size={18} className="text-muted" />}
+              </button>
+
+              {isExpanded && (
+                <div className="px-5 pb-5 border-t border-border pt-4 animate-fade-in">
+                  <div className="relative mb-3">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+                    <input
+                      type="search"
+                      value={busqueda}
+                      onChange={(e) => setBusqueda(e.target.value)}
+                      placeholder="Buscar producto..."
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-border text-sm bg-surface min-h-[40px]"
+                    />
+                  </div>
+
+                  <div className="max-h-72 overflow-y-auto space-y-1">
+                    {filteredProductos.map((p) => {
+                      const isAssigned = assignedIds.has(p.id);
+                      return (
+                        <label
+                          key={p.id}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors duration-100",
+                            isAssigned ? "bg-green-50" : "hover:bg-subtle"
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isAssigned}
+                            onChange={() => onToggle(p.id, esp.id, isAssigned)}
+                            className="w-4 h-4 shrink-0"
+                          />
+                          <span className={cn("truncate", isAssigned ? "font-medium text-ink" : "text-muted")}>
+                            {p.nombre}
+                          </span>
+                          <span className="text-[11px] text-muted ml-auto shrink-0 capitalize">{p.formato}</span>
+                        </label>
+                      );
+                    })}
+                    {filteredProductos.length === 0 && (
+                      <p className="text-sm text-muted text-center py-4">Sin resultados</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {especialidades.length === 0 && (
+        <div className="text-center py-16 bg-surface rounded-2xl border border-border">
+          <p className="text-muted">No hay especialidades configuradas</p>
+        </div>
+      )}
+    </>
   );
 }

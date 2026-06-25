@@ -1,20 +1,38 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { ProductGrid } from "@/components/catalog/ProductGrid";
+import { SpecialtyCarousel } from "@/components/mayorista/SpecialtyCarousel";
 import { Building2, Truck, Package, Clock, CalendarDays, MapPin } from "lucide-react";
 import { DESPACHO_EMPRESAS } from "@/lib/despacho";
 import { formatPrice } from "@/lib/utils";
-import type { Producto, DescuentoVolumen } from "@/lib/supabase/types";
+import type { Producto, DescuentoVolumen, EspecialidadConConteo } from "@/lib/supabase/types";
 
 interface CatalogoMayoristaProps {
   productos: Producto[];
   descuentos: DescuentoVolumen[];
+  especialidades: EspecialidadConConteo[];
+  productosPorEspecialidad: Record<string, string[]>;
 }
 
 export function CatalogoMayorista({
   productos,
   descuentos,
+  especialidades,
+  productosPorEspecialidad,
 }: CatalogoMayoristaProps) {
+  const [especialidadActiva, setEspecialidadActiva] = useState<string | null>(null);
+
+  const productosFiltrados = useMemo(() => {
+    if (!especialidadActiva) return productos;
+    const ids = productosPorEspecialidad[especialidadActiva];
+    if (!ids || ids.length === 0) return [];
+    const idSet = new Set(ids);
+    return productos.filter((p) => idSet.has(p.id));
+  }, [productos, especialidadActiva, productosPorEspecialidad]);
+
+  const especialidadInfo = especialidades.find((e) => e.slug === especialidadActiva);
+
   return (
     <div>
       {/* Hero mayorista */}
@@ -49,7 +67,7 @@ export function CatalogoMayorista({
             </div>
             <div className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
               <CalendarDays size={20} className="text-green-500 shrink-0" />
-              <span className="text-sm">Reparto martes, miércoles y viernes</span>
+              <span className="text-sm">Reparto {DESPACHO_EMPRESAS.dias.toLowerCase()}</span>
             </div>
           </div>
         </div>
@@ -61,24 +79,17 @@ export function CatalogoMayorista({
           Días y zonas de despacho
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          {DESPACHO_EMPRESAS.rutas.map((ruta) => (
-            <div
-              key={ruta.dias}
-              className="bg-surface rounded-2xl border border-border p-5"
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <CalendarDays size={20} className="text-green-700 shrink-0" />
-                <h3 className="font-heading font-semibold text-ink">
-                  {ruta.dias}
-                </h3>
-              </div>
-              <div className="flex items-start gap-2">
-                <MapPin size={16} className="text-muted shrink-0 mt-0.5" />
-                <p className="text-sm text-muted">{ruta.comunas.join(" · ")}</p>
-              </div>
-            </div>
-          ))}
+        <div className="bg-surface rounded-2xl border border-border p-5 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarDays size={20} className="text-green-700 shrink-0" />
+            <h3 className="font-heading font-semibold text-ink">
+              {DESPACHO_EMPRESAS.dias}
+            </h3>
+          </div>
+          <div className="flex items-start gap-2 mb-3">
+            <MapPin size={16} className="text-muted shrink-0 mt-0.5" />
+            <p className="text-sm text-muted">Despacho a todas las comunas: {DESPACHO_EMPRESAS.comunas.join(" · ")}</p>
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
@@ -193,9 +204,22 @@ export function CatalogoMayorista({
       {/* Catálogo mayorista */}
       <section className="max-w-7xl mx-auto px-4 py-12">
         <h2 className="font-heading text-2xl md:text-3xl font-bold text-ink mb-6">
-          Productos disponibles
+          {especialidadInfo
+            ? `Productos para ${especialidadInfo.nombre} ${especialidadInfo.emoji}`
+            : "Todos los productos disponibles"}
         </h2>
-        <ProductGrid productos={productos} tipo="mayorista" />
+
+        {especialidades.length > 0 && (
+          <div className="mb-8">
+            <SpecialtyCarousel
+              especialidades={especialidades}
+              selected={especialidadActiva}
+              onSelect={setEspecialidadActiva}
+            />
+          </div>
+        )}
+
+        <ProductGrid productos={productosFiltrados} tipo="mayorista" />
       </section>
     </div>
   );
