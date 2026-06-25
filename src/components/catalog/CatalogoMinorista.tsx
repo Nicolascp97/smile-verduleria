@@ -20,11 +20,11 @@ export function CatalogoMinorista({ productos }: CatalogoMinoristaProps) {
       {/* Hero */}
       <section className="relative overflow-hidden bg-white flex items-center">
         <Image
-          src="/hero/hero-02-produce-flatlay-soft.webp"
+          src="/hero/hero-1.jpeg"
           alt="Frutas y verduras frescas"
           fill
           priority
-          className="object-contain object-center"
+          className="object-cover object-center"
           sizes="100vw"
           quality={90}
         />
