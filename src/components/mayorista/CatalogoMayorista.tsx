@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Image from "next/image";
 import { ProductGrid } from "@/components/catalog/ProductGrid";
 import { SpecialtyCarousel } from "@/components/mayorista/SpecialtyCarousel";
 import { Building2, Truck, Package, Clock, CalendarDays, MapPin, MessageCircle } from "lucide-react";
@@ -36,8 +37,17 @@ export function CatalogoMayorista({
   return (
     <div>
       {/* Hero mayorista */}
-      <section className="bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 py-16 md:py-20">
+      <section className="relative overflow-hidden bg-gray-900 text-white">
+        <Image
+          src="/hero/hero-08-elegant-dark-produce.webp"
+          alt="Verduras frescas sobre fondo oscuro"
+          fill
+          priority
+          className="object-cover object-center opacity-40"
+          sizes="100vw"
+          quality={85}
+        />
+        <div className="relative max-w-7xl mx-auto px-4 py-16 md:py-20">
           <div className="flex items-center gap-3 mb-4">
             <Building2 size={28} className="text-green-500" />
             <span className="text-gray-400 text-sm font-medium tracking-widest uppercase">
