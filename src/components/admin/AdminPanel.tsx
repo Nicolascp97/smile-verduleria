@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createBrowserClient } from "@/lib/supabase/client";
-import { cn, formatPrice } from "@/lib/utils";
+import { cn, formatPrice, precioPromocion } from "@/lib/utils";
 import {
   Package,
   LogIn,
@@ -25,6 +25,8 @@ import {
   Phone,
   MapPin,
   Clock,
+  Percent,
+  Megaphone,
 } from "lucide-react";
 import type {
   Pedido,
@@ -34,6 +36,7 @@ import type {
   Categoria,
   Formato,
   Especialidad,
+  PromocionConProducto,
 } from "@/lib/supabase/types";
 
 const ESTADOS: { value: EstadoPedido; label: string; color: string }[] = [
@@ -67,6 +70,18 @@ const EMPTY_NEW_PRODUCT = {
   precio_mayorista: "" as string | number,
 };
 
+const EMPTY_NEW_PROMO = {
+  producto_id: "",
+  modo: "porcentaje" as "porcentaje" | "precio",
+  descuento_pct: "" as string | number,
+  precio_oferta: "" as string | number,
+  cantidad: "" as string | number,
+  formato_etiqueta: "",
+  badge_texto: "",
+};
+
+type NewPromoState = typeof EMPTY_NEW_PROMO;
+
 export default function AdminPanel() {
   const [password, setPassword] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
@@ -74,7 +89,7 @@ export default function AdminPanel() {
   const [filtroEstado, setFiltroEstado] = useState<EstadoPedido | "todos">("todos");
   const [filtroTipo, setFiltroTipo] = useState<"minorista" | "mayorista" | "todos">("todos");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [tab, setTab] = useState<"pedidos" | "productos" | "especialidades">("pedidos");
+  const [tab, setTab] = useState<"pedidos" | "productos" | "especialidades" | "promociones">("pedidos");
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
@@ -89,6 +104,14 @@ export default function AdminPanel() {
   const [espProductos, setEspProductos] = useState<Record<string, string[]>>({});
   const [espExpanded, setEspExpanded] = useState<string | null>(null);
   const [espBusqueda, setEspBusqueda] = useState("");
+
+  const [promociones, setPromociones] = useState<PromocionConProducto[]>([]);
+  const [promocionesActivas, setPromocionesActivas] = useState(false);
+  const [showAddPromo, setShowAddPromo] = useState(false);
+  const [newPromo, setNewPromo] = useState<NewPromoState>(EMPTY_NEW_PROMO);
+  const [editingPromo, setEditingPromo] = useState<string | null>(null);
+  const [editPromoValues, setEditPromoValues] = useState<Partial<NewPromoState>>({});
+  const [confirmDeletePromo, setConfirmDeletePromo] = useState<string | null>(null);
 
   const supabaseRef = useRef(createBrowserClient());
 
@@ -137,11 +160,39 @@ export default function AdminPanel() {
     }
   }, [authenticated, password]);
 
+  const fetchPromociones = useCallback(async () => {
+    if (!authenticated) return;
+    try {
+      const res = await fetch("/api/promociones", {
+        headers: { "x-admin-password": password },
+      });
+      const data = await res.json();
+      if (data.promociones) setPromociones(data.promociones);
+    } catch (err) {
+      console.error("Error fetching promociones:", err);
+    }
+  }, [authenticated, password]);
+
+  const fetchConfig = useCallback(async () => {
+    if (!authenticated) return;
+    try {
+      const res = await fetch("/api/configuracion", {
+        headers: { "x-admin-password": password },
+      });
+      const data = await res.json();
+      if (data.config) setPromocionesActivas(data.config.promociones_activas === "true");
+    } catch (err) {
+      console.error("Error fetching configuración:", err);
+    }
+  }, [authenticated, password]);
+
   useEffect(() => {
     if (!authenticated) return;
     fetchPedidos();
     fetchProductos();
     fetchEspecialidades();
+    fetchPromociones();
+    fetchConfig();
 
     const supabase = supabaseRef.current;
     const channel = supabase
@@ -156,7 +207,7 @@ export default function AdminPanel() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [authenticated, fetchPedidos, fetchProductos, fetchEspecialidades]);
+  }, [authenticated, fetchPedidos, fetchProductos, fetchEspecialidades, fetchPromociones, fetchConfig]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -230,6 +281,71 @@ export default function AdminPanel() {
       body: JSON.stringify({ id, stock: currentStock > 0 ? 0 : 1 }),
     });
     fetchProductos();
+  };
+
+  // ---------- Promociones ----------
+  const handleTogglePromocionesActivas = async () => {
+    const nuevo = !promocionesActivas;
+    setPromocionesActivas(nuevo);
+    await fetch("/api/configuracion", {
+      method: "PATCH",
+      headers: adminHeaders(),
+      body: JSON.stringify({ clave: "promociones_activas", valor: nuevo ? "true" : "false" }),
+    });
+    fetchConfig();
+  };
+
+  const buildPromoPayload = (p: NewPromoState) => ({
+    producto_id: p.producto_id,
+    descuento_pct: p.modo === "porcentaje" && p.descuento_pct !== "" ? Number(p.descuento_pct) : null,
+    precio_oferta: p.modo === "precio" && p.precio_oferta !== "" ? Number(p.precio_oferta) : null,
+    cantidad: p.cantidad !== "" ? Number(p.cantidad) : null,
+    formato_etiqueta: p.formato_etiqueta || null,
+    badge_texto: p.badge_texto || null,
+  });
+
+  const handleAddPromo = async () => {
+    const payload = buildPromoPayload(newPromo);
+    if (!payload.producto_id || (payload.descuento_pct == null && payload.precio_oferta == null)) return;
+    await fetch("/api/promociones", {
+      method: "POST",
+      headers: adminHeaders(),
+      body: JSON.stringify({ ...payload, orden: promociones.length }),
+    });
+    setShowAddPromo(false);
+    setNewPromo(EMPTY_NEW_PROMO);
+    fetchPromociones();
+  };
+
+  const handleSavePromo = async (id: string) => {
+    const payload = buildPromoPayload({ ...EMPTY_NEW_PROMO, ...editPromoValues } as NewPromoState);
+    await fetch("/api/promociones", {
+      method: "PATCH",
+      headers: adminHeaders(),
+      body: JSON.stringify({ id, ...payload }),
+    });
+    setEditingPromo(null);
+    setEditPromoValues({});
+    fetchPromociones();
+  };
+
+  const handleTogglePromoActivo = async (id: string, activo: boolean) => {
+    await fetch("/api/promociones", {
+      method: "PATCH",
+      headers: adminHeaders(),
+      body: JSON.stringify({ id, activo: !activo }),
+    });
+    fetchPromociones();
+  };
+
+  const handleDeletePromo = async (id: string) => {
+    await fetch("/api/promociones", {
+      method: "DELETE",
+      headers: adminHeaders(),
+      body: JSON.stringify({ id }),
+    });
+    setConfirmDeletePromo(null);
+    fetchPromociones();
   };
 
   const filteredPedidos = pedidos.filter((p) => {
@@ -394,6 +510,16 @@ export default function AdminPanel() {
             🍽️
             Especialidades
           </button>
+          <button
+            onClick={() => setTab("promociones")}
+            className={cn(
+              "flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-lg font-medium text-sm transition-colors duration-150 min-h-[40px]",
+              tab === "promociones" ? "bg-green-700 text-white" : "text-muted hover:text-ink"
+            )}
+          >
+            <Megaphone size={16} />
+            Promociones
+          </button>
         </div>
 
         {tab === "pedidos" && (
@@ -444,6 +570,29 @@ export default function AdminPanel() {
             busqueda={espBusqueda}
             setBusqueda={setEspBusqueda}
             onToggle={handleToggleEspProducto}
+          />
+        )}
+
+        {tab === "promociones" && (
+          <PromocionesView
+            promociones={promociones}
+            productos={productos}
+            promocionesActivas={promocionesActivas}
+            onToggleActivas={handleTogglePromocionesActivas}
+            showAddPromo={showAddPromo}
+            setShowAddPromo={setShowAddPromo}
+            newPromo={newPromo}
+            setNewPromo={setNewPromo}
+            onAddPromo={handleAddPromo}
+            editingPromo={editingPromo}
+            setEditingPromo={setEditingPromo}
+            editPromoValues={editPromoValues}
+            setEditPromoValues={setEditPromoValues}
+            onSavePromo={handleSavePromo}
+            onTogglePromoActivo={handleTogglePromoActivo}
+            confirmDeletePromo={confirmDeletePromo}
+            setConfirmDeletePromo={setConfirmDeletePromo}
+            onDeletePromo={handleDeletePromo}
           />
         )}
       </div>
@@ -982,5 +1131,382 @@ function EspecialidadesView({
         </div>
       )}
     </>
+  );
+}
+
+// ============ Promociones View ============
+function promoToFormState(promo: PromocionConProducto): NewPromoState {
+  return {
+    producto_id: promo.producto_id,
+    modo: promo.precio_oferta != null ? "precio" : "porcentaje",
+    descuento_pct: promo.descuento_pct ?? "",
+    precio_oferta: promo.precio_oferta ?? "",
+    cantidad: promo.cantidad ?? "",
+    formato_etiqueta: promo.formato_etiqueta ?? "",
+    badge_texto: promo.badge_texto ?? "",
+  };
+}
+
+function PromoFields({
+  state, setState, productos, lockProducto,
+}: {
+  state: NewPromoState;
+  setState: (v: NewPromoState) => void;
+  productos: Producto[];
+  lockProducto?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {!lockProducto && (
+        <label className="block sm:col-span-2">
+          <span className="text-xs font-medium text-muted block mb-1">Producto *</span>
+          <select
+            value={state.producto_id}
+            onChange={(e) => setState({ ...state, producto_id: e.target.value })}
+            className="admin-input"
+          >
+            <option value="">Elige un producto…</option>
+            {productos.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nombre}{p.formato_detalle ? ` · ${p.formato_detalle}` : ` · ${p.formato}`}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      <Field label="Tipo de descuento">
+        <div className="flex gap-1 bg-subtle rounded-xl p-1">
+          <button
+            type="button"
+            onClick={() => setState({ ...state, modo: "porcentaje" })}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors duration-150 min-h-[40px]",
+              state.modo === "porcentaje" ? "bg-green-700 text-white" : "text-muted hover:text-ink"
+            )}
+          >
+            <Percent size={14} /> Porcentaje
+          </button>
+          <button
+            type="button"
+            onClick={() => setState({ ...state, modo: "precio" })}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors duration-150 min-h-[40px]",
+              state.modo === "precio" ? "bg-green-700 text-white" : "text-muted hover:text-ink"
+            )}
+          >
+            <Tag size={14} /> Precio fijo
+          </button>
+        </div>
+      </Field>
+
+      {state.modo === "porcentaje" ? (
+        <Field label="% de descuento *">
+          <input
+            type="number"
+            value={state.descuento_pct}
+            onChange={(e) => setState({ ...state, descuento_pct: e.target.value })}
+            className="admin-input"
+            placeholder="Ej: 20"
+            min={0}
+            max={100}
+          />
+        </Field>
+      ) : (
+        <Field label="Precio de oferta *">
+          <input
+            type="number"
+            value={state.precio_oferta}
+            onChange={(e) => setState({ ...state, precio_oferta: e.target.value })}
+            className="admin-input"
+            placeholder="$"
+            min={0}
+          />
+        </Field>
+      )}
+
+      <Field label="Cantidad / pack">
+        <input
+          type="number"
+          value={state.cantidad}
+          onChange={(e) => setState({ ...state, cantidad: e.target.value })}
+          className="admin-input"
+          placeholder="Ej: 3"
+          min={0}
+        />
+      </Field>
+      <Field label="Etiqueta de formato">
+        <input
+          type="text"
+          value={state.formato_etiqueta}
+          onChange={(e) => setState({ ...state, formato_etiqueta: e.target.value })}
+          className="admin-input"
+          placeholder="Ej: malla 1kg"
+        />
+      </Field>
+      <Field label="Texto del badge">
+        <input
+          type="text"
+          value={state.badge_texto}
+          onChange={(e) => setState({ ...state, badge_texto: e.target.value })}
+          className="admin-input"
+          placeholder="Ej: Oferta, 2x1 (por defecto: Promoción)"
+        />
+      </Field>
+    </div>
+  );
+}
+
+function PromocionesView({
+  promociones, productos, promocionesActivas, onToggleActivas,
+  showAddPromo, setShowAddPromo, newPromo, setNewPromo, onAddPromo,
+  editingPromo, setEditingPromo, editPromoValues, setEditPromoValues, onSavePromo,
+  onTogglePromoActivo, confirmDeletePromo, setConfirmDeletePromo, onDeletePromo,
+}: {
+  promociones: PromocionConProducto[];
+  productos: Producto[];
+  promocionesActivas: boolean;
+  onToggleActivas: () => void;
+  showAddPromo: boolean;
+  setShowAddPromo: (v: boolean) => void;
+  newPromo: NewPromoState;
+  setNewPromo: (v: NewPromoState) => void;
+  onAddPromo: () => void;
+  editingPromo: string | null;
+  setEditingPromo: (v: string | null) => void;
+  editPromoValues: Partial<NewPromoState>;
+  setEditPromoValues: (v: Partial<NewPromoState>) => void;
+  onSavePromo: (id: string) => void;
+  onTogglePromoActivo: (id: string, activo: boolean) => void;
+  confirmDeletePromo: string | null;
+  setConfirmDeletePromo: (v: string | null) => void;
+  onDeletePromo: (id: string) => void;
+}) {
+  const addValido =
+    !!newPromo.producto_id &&
+    ((newPromo.modo === "porcentaje" && newPromo.descuento_pct !== "") ||
+      (newPromo.modo === "precio" && newPromo.precio_oferta !== ""));
+
+  return (
+    <>
+      {/* Interruptor global */}
+      <div className={cn(
+        "rounded-2xl border p-5 mb-5 flex items-center justify-between gap-4",
+        promocionesActivas ? "bg-green-50 border-green-200" : "bg-surface border-border"
+      )}>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className={cn(
+            "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
+            promocionesActivas ? "bg-green-100 text-green-700" : "bg-subtle text-muted"
+          )}>
+            <Megaphone size={20} />
+          </span>
+          <div className="min-w-0">
+            <p className="font-semibold text-ink">Sección Promociones en la home</p>
+            <p className="text-xs text-muted mt-0.5">
+              {promocionesActivas
+                ? "Visible: los clientes ven la sección con las promociones activas."
+                : "Oculta: la sección no aparece en la home aunque haya promociones."}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onToggleActivas}
+          role="switch"
+          aria-checked={promocionesActivas}
+          aria-label="Mostrar sección Promociones en la home"
+          className={cn(
+            "relative w-14 h-8 rounded-full transition-colors duration-200 shrink-0",
+            promocionesActivas ? "bg-green-700" : "bg-gray-300"
+          )}
+        >
+          <span className={cn(
+            "absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform duration-200",
+            promocionesActivas && "translate-x-6"
+          )} />
+        </button>
+      </div>
+
+      {/* Agregar */}
+      <div className="flex justify-end mb-5">
+        <button
+          onClick={() => setShowAddPromo(!showAddPromo)}
+          className={cn(
+            "flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-colors duration-150 min-h-[44px]",
+            showAddPromo ? "bg-gray-200 text-ink" : "bg-green-700 text-white hover:bg-green-600"
+          )}
+        >
+          {showAddPromo ? <X size={16} /> : <Plus size={16} />}
+          {showAddPromo ? "Cancelar" : "Agregar promoción"}
+        </button>
+      </div>
+
+      {showAddPromo && (
+        <div className="bg-surface rounded-2xl border border-border p-5 mb-5 space-y-3 animate-fade-in">
+          <h3 className="font-heading font-semibold text-ink flex items-center gap-2">
+            <Plus size={18} className="text-green-700" /> Nueva promoción
+          </h3>
+          <PromoFields state={newPromo} setState={setNewPromo} productos={productos} />
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={onAddPromo}
+              disabled={!addValido}
+              className={cn(
+                "px-5 py-2.5 rounded-xl font-medium text-sm transition-colors duration-150 min-h-[44px]",
+                !addValido ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-green-700 text-white hover:bg-green-600"
+              )}
+            >
+              Guardar promoción
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Lista */}
+      <p className="text-xs text-muted mb-3">
+        {promociones.length} promoci{promociones.length === 1 ? "ón" : "ones"} configurada{promociones.length === 1 ? "" : "s"}
+      </p>
+
+      {promociones.length === 0 ? (
+        <div className="text-center py-16 bg-surface rounded-2xl border border-border">
+          <Megaphone size={40} className="mx-auto text-muted mb-3" />
+          <p className="text-muted">Aún no hay promociones. Agrega la primera.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {promociones.map((promo) => (
+            <PromocionCard
+              key={promo.id}
+              promo={promo}
+              productos={productos}
+              isEditing={editingPromo === promo.id}
+              isDeleting={confirmDeletePromo === promo.id}
+              editValues={editPromoValues}
+              setEditValues={setEditPromoValues}
+              onStartEdit={() => { setEditingPromo(promo.id); setEditPromoValues(promoToFormState(promo)); }}
+              onCancelEdit={() => { setEditingPromo(null); setEditPromoValues({}); }}
+              onSave={() => onSavePromo(promo.id)}
+              onToggleActivo={() => onTogglePromoActivo(promo.id, promo.activo)}
+              onAskDelete={() => setConfirmDeletePromo(promo.id)}
+              onCancelDelete={() => setConfirmDeletePromo(null)}
+              onConfirmDelete={() => onDeletePromo(promo.id)}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function PromocionCard({
+  promo, productos, isEditing, isDeleting, editValues, setEditValues,
+  onStartEdit, onCancelEdit, onSave, onToggleActivo, onAskDelete, onCancelDelete, onConfirmDelete,
+}: {
+  promo: PromocionConProducto;
+  productos: Producto[];
+  isEditing: boolean;
+  isDeleting: boolean;
+  editValues: Partial<NewPromoState>;
+  setEditValues: (v: Partial<NewPromoState>) => void;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSave: () => void;
+  onToggleActivo: () => void;
+  onAskDelete: () => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
+}) {
+  const calc = precioPromocion(promo, promo.producto);
+  const formatoPromo =
+    promo.formato_etiqueta ||
+    (promo.cantidad ? `${promo.cantidad} ${promo.producto.formato}` : promo.producto.formato);
+
+  return (
+    <div className={cn(
+      "bg-surface rounded-2xl border p-4 flex flex-col gap-3 transition-colors duration-150",
+      promo.activo ? "border-border" : "border-dashed border-gray-300 opacity-70"
+    )}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="font-semibold text-ink leading-tight">{promo.producto.nombre}</h3>
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-accent-warm/15 text-accent-warm">
+              {promo.badge_texto || "Promoción"}
+            </span>
+            <span className="text-xs text-muted capitalize">{formatoPromo}</span>
+          </div>
+        </div>
+        {promo.activo
+          ? <CheckCircle size={18} className="text-green-600 shrink-0" aria-label="Activa" />
+          : <XCircle size={18} className="text-gray-400 shrink-0" aria-label="Inactiva" />}
+      </div>
+
+      {isEditing ? (
+        <div className="space-y-3">
+          <PromoFields
+            state={{ ...EMPTY_NEW_PROMO, ...editValues } as NewPromoState}
+            setState={(v) => setEditValues(v)}
+            productos={productos}
+            lockProducto
+          />
+          <div className="flex gap-2 pt-1">
+            <button onClick={onSave} className="flex-1 flex items-center justify-center gap-1.5 bg-green-700 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-600 min-h-[40px]">
+              <Save size={15} /> Guardar
+            </button>
+            <button onClick={onCancelEdit} className="px-4 py-2 rounded-lg text-sm text-muted hover:bg-subtle min-h-[40px]">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-baseline gap-2">
+              <span className="font-heading text-lg font-bold text-ink">{formatPrice(calc.precioFinal)}</span>
+              {calc.precioOriginal != null && calc.precioOriginal !== calc.precioFinal && (
+                <span className="text-sm text-muted line-through">{formatPrice(calc.precioOriginal)}</span>
+              )}
+            </div>
+            {calc.pctMostrar ? (
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                -{calc.pctMostrar}%
+              </span>
+            ) : null}
+          </div>
+
+          {isDeleting ? (
+            <div className="flex items-center justify-between gap-2 bg-red-50 rounded-xl px-3 py-2">
+              <span className="text-sm text-red-700 font-medium">¿Eliminar esta promoción?</span>
+              <div className="flex gap-2">
+                <button onClick={onConfirmDelete} className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 min-h-[36px]">Sí, eliminar</button>
+                <button onClick={onCancelDelete} className="px-3 py-1.5 rounded-lg bg-gray-200 text-ink text-xs font-medium hover:bg-gray-300 min-h-[36px]">No</button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2 pt-1 border-t border-border mt-1">
+              <button
+                onClick={onToggleActivo}
+                className={cn(
+                  "px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 min-h-[40px] mt-1",
+                  promo.activo
+                    ? "bg-green-100 text-green-700 hover:bg-gray-200 hover:text-ink"
+                    : "bg-gray-100 text-muted hover:bg-green-100 hover:text-green-700"
+                )}
+                title={promo.activo ? "Click para desactivar" : "Click para activar"}
+              >
+                {promo.activo ? "Activa" : "Inactiva"}
+              </button>
+              <button onClick={onStartEdit} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm text-ink hover:bg-subtle min-h-[40px] mt-1">
+                <Edit3 size={15} /> Editar
+              </button>
+              <button onClick={onAskDelete} className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm text-muted hover:text-red-600 hover:bg-red-50 min-h-[40px] mt-1">
+                <Trash2 size={15} />
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }

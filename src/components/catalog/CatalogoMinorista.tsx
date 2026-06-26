@@ -6,15 +6,14 @@ import { ProductCard } from "./ProductCard";
 import { Truck, CalendarDays, MapPin, Clock, User, Info, ShoppingBasket } from "lucide-react";
 import { DESPACHO_PARTICULARES } from "@/lib/despacho";
 import { formatPrice } from "@/lib/utils";
-import type { Producto } from "@/lib/supabase/types";
+import type { Producto, PromocionConProducto } from "@/lib/supabase/types";
 
 interface CatalogoMinoristaProps {
   productos: Producto[];
+  promociones: PromocionConProducto[];
 }
 
-export function CatalogoMinorista({ productos }: CatalogoMinoristaProps) {
-  const destacados = productos.filter((p) => p.destacado);
-
+export function CatalogoMinorista({ productos, promociones }: CatalogoMinoristaProps) {
   return (
     <div>
       {/* Hero */}
@@ -198,16 +197,16 @@ export function CatalogoMinorista({ productos }: CatalogoMinoristaProps) {
         </div>
       </section>
 
-      {/* Destacados de la semana */}
-      {destacados.length > 0 && (
+      {/* Promociones (administrable desde el panel) */}
+      {promociones.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 py-12">
           <h2 className="font-heading text-2xl md:text-3xl font-bold text-ink mb-6">
-            Favoritos de la semana
+            Promociones
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {destacados.slice(0, 8).map((p) => (
-              <div key={p.id}>
-                <ProductCard producto={p} tipo="minorista" />
+            {promociones.map((promo) => (
+              <div key={promo.id}>
+                <ProductCard producto={promo.producto} tipo="minorista" promo={promo} />
               </div>
             ))}
           </div>

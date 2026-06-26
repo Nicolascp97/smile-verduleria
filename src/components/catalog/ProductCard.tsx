@@ -2,8 +2,8 @@
 
 import { Plus, Minus, ShoppingCart } from "lucide-react";
 import { useCartStore } from "@/store/cart";
-import { formatPrice, cn } from "@/lib/utils";
-import type { Producto } from "@/lib/supabase/types";
+import { formatPrice, cn, precioPromocion } from "@/lib/utils";
+import type { Producto, PromocionConProducto } from "@/lib/supabase/types";
 import Image from "next/image";
 
 const PLACEHOLDER_IMAGES: Record<string, string> = {
@@ -18,25 +18,49 @@ const PLACEHOLDER_IMAGES: Record<string, string> = {
 interface ProductCardProps {
   producto: Producto;
   tipo: "minorista" | "mayorista";
+  promo?: PromocionConProducto;
 }
 
-export function ProductCard({ producto, tipo }: ProductCardProps) {
+export function ProductCard({ producto, tipo, promo }: ProductCardProps) {
   const { items, addItem, updateQuantity, removeItem } = useCartStore();
   const cartItem = items.find((i) => i.producto.id === producto.id);
   const cantidad = cartItem?.cantidad ?? 0;
 
-  const precio =
+  const precioBase =
     tipo === "mayorista"
       ? producto.precio_mayorista
       : producto.precio_minorista;
 
-  const formatoDisplay = producto.formato_detalle
-    ? `${producto.formato} · ${producto.formato_detalle}`
-    : producto.formato;
+  // Si hay promo, el precio final viene del cálculo de oferta (solo minorista).
+  const promoCalc =
+    promo && tipo === "minorista"
+      ? precioPromocion(promo, producto)
+      : null;
+  const precio = promoCalc ? promoCalc.precioFinal : precioBase;
+
+  // Etiqueta de formato: la promo puede sobreescribirla.
+  const formatoPromo =
+    promo?.formato_etiqueta ||
+    (promo?.cantidad ? `${promo.cantidad} ${producto.formato}` : null);
+  const formatoDisplay = promo
+    ? formatoPromo ?? producto.formato
+    : producto.formato_detalle
+      ? `${producto.formato} · ${producto.formato_detalle}`
+      : producto.formato;
 
   const imageSrc = producto.imagen_url || PLACEHOLDER_IMAGES[producto.categoria] || "/placeholders/verduras.svg";
 
   const sinStock = producto.stock <= 0;
+
+  // Producto que se agrega al carrito: con promo, refleja el precio de oferta
+  // y la etiqueta de la promoción para el resumen del pedido.
+  const productoCarrito: Producto = promoCalc
+    ? {
+        ...producto,
+        precio_minorista: precio,
+        formato_detalle: formatoPromo ?? producto.formato_detalle,
+      }
+    : producto;
 
   return (
     <article
@@ -55,16 +79,20 @@ export function ProductCard({ producto, tipo }: ProductCardProps) {
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           className="object-cover"
         />
-        {producto.destacado && (
+        {promo && (
           <span className="absolute top-2 left-2 bg-accent-warm text-white text-xs font-bold px-2.5 py-1 rounded-full">
-            Destacado
+            {promo.badge_texto || "Promoción"}
           </span>
         )}
-        {sinStock && (
+        {promoCalc?.pctMostrar ? (
+          <span className="absolute top-2 right-2 bg-green-700 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+            -{promoCalc.pctMostrar}%
+          </span>
+        ) : sinStock ? (
           <span className="absolute top-2 right-2 bg-error text-white text-xs font-bold px-2.5 py-1 rounded-full">
             Sin stock
           </span>
-        )}
+        ) : null}
       </div>
 
       <div className="p-4 flex flex-col flex-1">
@@ -74,13 +102,24 @@ export function ProductCard({ producto, tipo }: ProductCardProps) {
         <p className="text-sm text-muted mt-1 capitalize">{formatoDisplay}</p>
 
         <div className="mt-auto pt-3">
-          <p className="font-heading text-lg font-bold text-ink">
-            {formatPrice(precio)}
-          </p>
+          {promoCalc && promoCalc.precioOriginal != null && promoCalc.precioOriginal !== precio ? (
+            <div className="flex items-baseline gap-2">
+              <p className="font-heading text-lg font-bold text-ink">
+                {formatPrice(precio)}
+              </p>
+              <p className="text-sm text-muted line-through">
+                {formatPrice(promoCalc.precioOriginal)}
+              </p>
+            </div>
+          ) : (
+            <p className="font-heading text-lg font-bold text-ink">
+              {formatPrice(precio)}
+            </p>
+          )}
 
           {cantidad === 0 ? (
             <button
-              onClick={() => !sinStock && addItem(producto)}
+              onClick={() => !sinStock && addItem(productoCarrito)}
               disabled={sinStock}
               className={cn(
                 "mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm transition-all duration-150",

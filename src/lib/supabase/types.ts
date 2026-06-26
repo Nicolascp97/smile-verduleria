@@ -93,6 +93,28 @@ export interface EspecialidadConConteo extends Especialidad {
   producto_count: number;
 }
 
+export interface Promocion {
+  id: string;
+  producto_id: string;
+  descuento_pct: number | null;
+  precio_oferta: number | null;
+  cantidad: number | null;
+  formato_etiqueta: string | null;
+  badge_texto: string | null;
+  orden: number;
+  activo: boolean;
+  created_at: string;
+}
+
+export interface PromocionConProducto extends Promocion {
+  producto: Producto;
+}
+
+export interface Configuracion {
+  clave: string;
+  valor: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -120,6 +142,16 @@ export interface Database {
         Row: { id: string; producto_id: string; especialidad_id: string };
         Insert: Omit<{ id: string; producto_id: string; especialidad_id: string }, "id">;
         Update: Partial<Omit<{ id: string; producto_id: string; especialidad_id: string }, "id">>;
+      };
+      promociones: {
+        Row: Promocion;
+        Insert: Omit<Promocion, "id" | "created_at">;
+        Update: Partial<Omit<Promocion, "id" | "created_at">>;
+      };
+      configuracion: {
+        Row: Configuracion;
+        Insert: Configuracion;
+        Update: Partial<Configuracion>;
       };
     };
   };
