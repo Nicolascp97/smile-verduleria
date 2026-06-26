@@ -1,10 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { ContactBar } from "@/components/layout/ContactBar";
-import { CartDrawer } from "@/components/cart/CartDrawer";
-import { ChatWidget } from "@/components/chat/ChatWidget";
 
 export const metadata: Metadata = {
   title: "Smile Fruits — Verdulería Fresca y Local",
@@ -25,14 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es-CL" className="h-full">
-      <body className="min-h-full flex flex-col">
-        <ContactBar />
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
-        <CartDrawer />
-        <ChatWidget />
-      </body>
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }

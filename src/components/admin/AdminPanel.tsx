@@ -479,11 +479,11 @@ export default function AdminPanel() {
         </div>
 
         {/* Segmented tabs */}
-        <div className="inline-flex bg-surface border border-border rounded-xl p-1 mb-6 w-full sm:w-auto">
+        <div className="grid grid-cols-2 gap-1 sm:inline-flex bg-surface border border-border rounded-xl p-1 mb-6">
           <button
             onClick={() => setTab("pedidos")}
             className={cn(
-              "flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-lg font-medium text-sm transition-colors duration-150 min-h-[40px]",
+              "flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors duration-150 min-h-[44px]",
               tab === "pedidos" ? "bg-green-700 text-white" : "text-muted hover:text-ink"
             )}
           >
@@ -493,7 +493,7 @@ export default function AdminPanel() {
           <button
             onClick={() => setTab("productos")}
             className={cn(
-              "flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-lg font-medium text-sm transition-colors duration-150 min-h-[40px]",
+              "flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors duration-150 min-h-[44px]",
               tab === "productos" ? "bg-green-700 text-white" : "text-muted hover:text-ink"
             )}
           >
@@ -503,7 +503,7 @@ export default function AdminPanel() {
           <button
             onClick={() => setTab("especialidades")}
             className={cn(
-              "flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-lg font-medium text-sm transition-colors duration-150 min-h-[40px]",
+              "flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors duration-150 min-h-[44px]",
               tab === "especialidades" ? "bg-green-700 text-white" : "text-muted hover:text-ink"
             )}
           >
@@ -513,7 +513,7 @@ export default function AdminPanel() {
           <button
             onClick={() => setTab("promociones")}
             className={cn(
-              "flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-lg font-medium text-sm transition-colors duration-150 min-h-[40px]",
+              "flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors duration-150 min-h-[44px]",
               tab === "promociones" ? "bg-green-700 text-white" : "text-muted hover:text-ink"
             )}
           >
