@@ -27,7 +27,9 @@ import {
   Clock,
   Percent,
   Megaphone,
+  Camera,
 } from "lucide-react";
+import Image from "next/image";
 import type {
   Pedido,
   EstadoPedido,
@@ -281,6 +283,29 @@ export default function AdminPanel() {
       body: JSON.stringify({ id, stock: currentStock > 0 ? 0 : 1 }),
     });
     fetchProductos();
+  };
+
+  // Sube una imagen al bucket de Supabase y devuelve la URL pública (o null).
+  const handleUploadFoto = async (file: File, nombre: string): Promise<string | null> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("nombre", nombre);
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "x-admin-password": password }, // sin Content-Type: el navegador pone el boundary
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "No se pudo subir la imagen");
+        return null;
+      }
+      return data.url as string;
+    } catch {
+      alert("No se pudo subir la imagen");
+      return null;
+    }
   };
 
   // ---------- Promociones ----------
@@ -557,6 +582,7 @@ export default function AdminPanel() {
             setConfirmDelete={setConfirmDelete}
             onDeleteProduct={handleDeleteProduct}
             onToggleStock={handleToggleStock}
+            uploadFoto={handleUploadFoto}
           />
         )}
 
@@ -749,7 +775,7 @@ function ProductosView({
   productos, totalProductos, busqueda, setBusqueda, filtroCategoria, setFiltroCategoria,
   showAddForm, setShowAddForm, newProduct, setNewProduct, onAddProduct,
   editingProduct, setEditingProduct, editValues, setEditValues, onSaveProduct,
-  confirmDelete, setConfirmDelete, onDeleteProduct, onToggleStock,
+  confirmDelete, setConfirmDelete, onDeleteProduct, onToggleStock, uploadFoto,
 }: {
   productos: Producto[];
   totalProductos: number;
@@ -771,6 +797,7 @@ function ProductosView({
   setConfirmDelete: (v: string | null) => void;
   onDeleteProduct: (id: string) => void;
   onToggleStock: (id: string, stock: number) => void;
+  uploadFoto: (file: File, nombre: string) => Promise<string | null>;
 }) {
   return (
     <>
@@ -886,6 +913,7 @@ function ProductosView({
               onCancelDelete={() => setConfirmDelete(null)}
               onConfirmDelete={() => onDeleteProduct(p.id)}
               onToggleStock={() => onToggleStock(p.id, p.stock)}
+              uploadFoto={uploadFoto}
             />
           ))}
         </div>
@@ -906,7 +934,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 // ============ Producto Card ============
 function ProductoCard({
   producto: p, isEditing, isDeleting, editValues, setEditValues,
-  onStartEdit, onCancelEdit, onSave, onAskDelete, onCancelDelete, onConfirmDelete, onToggleStock,
+  onStartEdit, onCancelEdit, onSave, onAskDelete, onCancelDelete, onConfirmDelete, onToggleStock, uploadFoto,
 }: {
   producto: Producto;
   isEditing: boolean;
@@ -920,9 +948,26 @@ function ProductoCard({
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
   onToggleStock: () => void;
+  uploadFoto: (file: File, nombre: string) => Promise<string | null>;
 }) {
   const cat = CATEGORIA_META[p.categoria as Categoria] ?? { label: p.categoria, color: "bg-gray-100 text-gray-700" };
   const sinStock = p.stock <= 0;
+  const [uploading, setUploading] = useState(false);
+
+  const fotoActual =
+    editValues.imagen_url ??
+    p.imagen_url ??
+    `/placeholders/${p.categoria === "legumbres_granos" ? "legumbres" : p.categoria}.svg`;
+
+  const onPickFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    const url = await uploadFoto(file, editValues.nombre ?? p.nombre);
+    setUploading(false);
+    if (url) setEditValues({ ...editValues, imagen_url: url });
+  };
 
   return (
     <div className={cn(
@@ -931,13 +976,18 @@ function ProductoCard({
     )}>
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="font-semibold text-ink leading-tight">{p.nombre}</h3>
-          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-            <span className={cn("px-2 py-0.5 rounded-full text-[11px] font-medium", cat.color)}>{cat.label}</span>
-            <span className="text-xs text-muted capitalize">
-              {p.formato}{p.formato_detalle ? ` · ${p.formato_detalle}` : ""}
-            </span>
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-subtle border border-border shrink-0">
+            <Image src={fotoActual} alt={p.nombre} fill sizes="48px" className="object-cover" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-ink leading-tight">{p.nombre}</h3>
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <span className={cn("px-2 py-0.5 rounded-full text-[11px] font-medium", cat.color)}>{cat.label}</span>
+              <span className="text-xs text-muted capitalize">
+                {p.formato}{p.formato_detalle ? ` · ${p.formato_detalle}` : ""}
+              </span>
+            </div>
           </div>
         </div>
         {p.activo
@@ -947,6 +997,73 @@ function ProductoCard({
 
       {isEditing ? (
         <div className="grid grid-cols-2 gap-2">
+          {/* Foto */}
+          <div className="col-span-2">
+            <span className="text-xs font-medium text-muted block mb-1">Foto</span>
+            <div className="flex items-center gap-3">
+              <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-subtle border border-border shrink-0">
+                <Image src={fotoActual} alt={p.nombre} fill sizes="64px" className="object-cover" />
+              </div>
+              <label
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium min-h-[44px] transition-colors duration-150",
+                  uploading ? "bg-gray-100 text-gray-400 cursor-wait" : "bg-subtle text-ink hover:bg-gray-200 cursor-pointer"
+                )}
+              >
+                <Camera size={16} />
+                {uploading ? "Subiendo..." : "Cambiar foto"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={onPickFoto}
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Nombre */}
+          <label className="col-span-2 block">
+            <span className="text-xs font-medium text-muted block mb-1">Nombre</span>
+            <input
+              type="text"
+              value={editValues.nombre ?? p.nombre}
+              onChange={(e) => setEditValues({ ...editValues, nombre: e.target.value })}
+              className="admin-input"
+            />
+          </label>
+
+          <Field label="Categoría">
+            <select
+              value={editValues.categoria ?? p.categoria}
+              onChange={(e) => setEditValues({ ...editValues, categoria: e.target.value as Categoria })}
+              className="admin-input capitalize"
+            >
+              {CATEGORIAS.map((c) => <option key={c} value={c}>{CATEGORIA_META[c].label}</option>)}
+            </select>
+          </Field>
+          <Field label="Formato">
+            <select
+              value={editValues.formato ?? p.formato}
+              onChange={(e) => setEditValues({ ...editValues, formato: e.target.value as Formato })}
+              className="admin-input capitalize"
+            >
+              {FORMATOS.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </Field>
+
+          <label className="col-span-2 block">
+            <span className="text-xs font-medium text-muted block mb-1">Detalle del formato</span>
+            <input
+              type="text"
+              value={editValues.formato_detalle ?? p.formato_detalle ?? ""}
+              onChange={(e) => setEditValues({ ...editValues, formato_detalle: e.target.value || null })}
+              className="admin-input"
+              placeholder="Ej: 5 unidades"
+            />
+          </label>
+
           <Field label="Stock">
             <input type="number" value={editValues.stock ?? p.stock} onChange={(e) => setEditValues({ ...editValues, stock: Number(e.target.value) })} className="admin-input" />
           </Field>
