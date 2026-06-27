@@ -59,6 +59,26 @@ export function ChatWidget() {
     };
   }, []);
 
+  // La burbuja se esconde sola unos segundos después de aparecer
+  useEffect(() => {
+    if (!showBubble) return;
+    const timer = setTimeout(() => setShowBubble(false), 8000);
+    return () => clearTimeout(timer);
+  }, [showBubble]);
+
+  // Se oculta cuando hay un popup/modal abierto (para no tapar contenido)
+  const [hiddenByModal, setHiddenByModal] = useState(false);
+  useEffect(() => {
+    const onOpen = () => setHiddenByModal(true);
+    const onClose = () => setHiddenByModal(false);
+    window.addEventListener("smile:modal-open", onOpen);
+    window.addEventListener("smile:modal-close", onClose);
+    return () => {
+      window.removeEventListener("smile:modal-open", onOpen);
+      window.removeEventListener("smile:modal-close", onClose);
+    };
+  }, []);
+
   const handleSend = async () => {
     const text = input.trim();
     if (!text || loading) return;
@@ -127,6 +147,8 @@ export function ChatWidget() {
       setLoading(false);
     }
   };
+
+  if (hiddenByModal) return null;
 
   return (
     <>

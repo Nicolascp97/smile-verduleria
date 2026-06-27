@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { ProductGrid } from "./ProductGrid";
 import { ProductCard } from "./ProductCard";
@@ -53,6 +53,15 @@ interface CatalogoMinoristaProps {
 
 export function CatalogoMinorista({ productos, promociones }: CatalogoMinoristaProps) {
   const [canastaOpen, setCanastaOpen] = useState(false);
+
+  // Mientras el popup esté abierto, avisa al chat flotante para que se oculte
+  useEffect(() => {
+    if (!canastaOpen) return;
+    window.dispatchEvent(new Event("smile:modal-open"));
+    return () => {
+      window.dispatchEvent(new Event("smile:modal-close"));
+    };
+  }, [canastaOpen]);
 
   return (
     <div>
