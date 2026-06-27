@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-
 const CLIENTES = [
   { nombre: "Café Lucerna", logo: "/cafe-lucerna.jpeg" },
   { nombre: "Casa China", logo: "/casa-china.jpeg" },
@@ -9,7 +7,6 @@ const CLIENTES = [
 ];
 
 export function ClientMarquee() {
-  // Duplicamos la lista para que el scroll sea continuo sin cortes
   const items = [...CLIENTES, ...CLIENTES, ...CLIENTES, ...CLIENTES];
 
   return (
@@ -19,7 +16,6 @@ export function ClientMarquee() {
       </p>
 
       <div className="relative">
-        {/* Gradientes laterales para efecto de fade */}
         <div className="absolute inset-y-0 left-0 w-16 md:w-24 bg-gradient-to-r from-ink to-transparent z-10 pointer-events-none" />
         <div className="absolute inset-y-0 right-0 w-16 md:w-24 bg-gradient-to-l from-ink to-transparent z-10 pointer-events-none" />
 
@@ -29,12 +25,12 @@ export function ClientMarquee() {
               key={`${cliente.nombre}-${i}`}
               className="flex-shrink-0 w-28 h-28 md:w-36 md:h-36 rounded-2xl overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center p-3"
             >
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={cliente.logo}
                 alt={cliente.nombre}
-                width={120}
-                height={120}
-                className="object-contain rounded-xl"
+                className="w-full h-full object-contain rounded-xl"
+                loading="lazy"
               />
             </div>
           ))}
