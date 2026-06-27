@@ -4,11 +4,14 @@ import { useState } from "react";
 import Image from "next/image";
 import { ProductGrid } from "./ProductGrid";
 import { ProductCard } from "./ProductCard";
-import { Truck, CalendarDays, MapPin, Clock, User, Info, ShoppingBasket, X, Check } from "lucide-react";
+import { Truck, CalendarDays, MapPin, Clock, User, Info, ShoppingBasket, X, Check, MessageCircle } from "lucide-react";
 import { DESPACHO_PARTICULARES } from "@/lib/despacho";
 import { formatPrice } from "@/lib/utils";
+import { getWhatsAppUrl } from "@/lib/whatsapp";
 import { ClientMarquee } from "@/components/layout/ClientMarquee";
 import type { Producto, PromocionConProducto } from "@/lib/supabase/types";
+
+const CANASTA_BASICA_PRECIO = 35000;
 
 // Contenido de la Canasta Básica (según productos-unificado.md)
 const CANASTA_BASICA = [
@@ -29,6 +32,19 @@ const CANASTA_BASICA = [
   "Manzana — 1 kilo",
   "Kiwi — 1 kilo",
 ];
+
+function mensajeCanastaWhatsApp(): string {
+  return [
+    `*PEDIDO — SMILE* 🧺`,
+    ``,
+    `¡Hola! Quiero pedir la *Canasta Básica* (${formatPrice(CANASTA_BASICA_PRECIO)}).`,
+    ``,
+    `*Incluye:*`,
+    ...CANASTA_BASICA.map((i) => `• ${i}`),
+    ``,
+    `*Total:* ${formatPrice(CANASTA_BASICA_PRECIO)}`,
+  ].join("\n");
+}
 
 interface CatalogoMinoristaProps {
   productos: Producto[];
@@ -109,7 +125,7 @@ export function CatalogoMinorista({ productos, promociones }: CatalogoMinoristaP
               <div className="text-left">
                 <p className="font-bold text-ink text-sm">Canasta Básica</p>
                 <p className="text-xs text-muted">Un poco de todo · <span className="text-green-700 font-semibold">Ver detalle</span></p>
-                <p className="font-bold text-green-700 text-lg mt-1">{formatPrice(35000)}</p>
+                <p className="font-bold text-green-700 text-lg mt-1">{formatPrice(CANASTA_BASICA_PRECIO)}</p>
               </div>
             </button>
             <div className="bg-white/90 backdrop-blur-sm border-2 border-green-700 rounded-2xl px-6 py-5 flex items-center gap-4 flex-1 shadow-sm">
@@ -271,7 +287,7 @@ export function CatalogoMinorista({ productos, promociones }: CatalogoMinoristaP
                 <ShoppingBasket size={28} className="shrink-0" />
                 <div>
                   <h3 className="font-heading text-xl font-bold leading-tight">Canasta Básica</h3>
-                  <p className="text-sm text-white/85">{formatPrice(35000)} · Un poco de todo</p>
+                  <p className="text-sm text-white/85">{formatPrice(CANASTA_BASICA_PRECIO)} · Un poco de todo</p>
                 </div>
               </div>
               <button
@@ -299,12 +315,22 @@ export function CatalogoMinorista({ productos, promociones }: CatalogoMinoristaP
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-border">
+            <div className="px-6 py-4 border-t border-border flex flex-col gap-2">
+              <a
+                href={getWhatsAppUrl(mensajeCanastaWhatsApp())}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setCanastaOpen(false)}
+                className="w-full bg-green-700 text-white py-3 rounded-xl font-semibold hover:bg-green-600 transition-colors duration-150 min-h-[48px] flex items-center justify-center gap-2"
+              >
+                <MessageCircle size={18} />
+                Pedir canasta por WhatsApp
+              </a>
               <button
                 onClick={() => setCanastaOpen(false)}
-                className="w-full bg-green-700 text-white py-3 rounded-xl font-semibold hover:bg-green-600 transition-colors duration-150 min-h-[48px]"
+                className="w-full text-muted py-2 rounded-xl font-medium hover:bg-subtle transition-colors duration-150 text-sm min-h-[40px]"
               >
-                Entendido
+                Cerrar
               </button>
             </div>
           </div>
