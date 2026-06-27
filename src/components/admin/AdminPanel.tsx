@@ -1825,35 +1825,41 @@ function CanastaForm({
         </div>
         <div className="space-y-2">
           {state.items.map((it, idx) => (
-            <div key={idx} className="flex gap-2 items-center">
-              <select
-                value={it.producto_id}
-                onChange={(e) => updateItem(idx, { producto_id: e.target.value })}
-                className="admin-input flex-1 min-w-0"
-              >
-                <option value="">Elige producto…</option>
-                {productos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre}{p.formato_detalle ? ` · ${p.formato_detalle}` : ` · ${p.formato}`}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="text"
-                value={it.cantidad}
-                onChange={(e) => updateItem(idx, { cantidad: e.target.value })}
-                className="admin-input w-28 shrink-0"
-                placeholder="cantidad"
-                aria-label="Cantidad"
-              />
-              <button
-                type="button"
-                onClick={() => removeItem(idx)}
-                aria-label="Quitar producto"
-                className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-muted hover:text-red-600 hover:bg-red-50"
-              >
-                <Trash2 size={15} />
-              </button>
+            <div key={idx} className="flex flex-col sm:flex-row gap-2 sm:items-center">
+              <div className="flex-1 min-w-0">
+                <select
+                  value={it.producto_id}
+                  onChange={(e) => updateItem(idx, { producto_id: e.target.value })}
+                  className="admin-input"
+                >
+                  <option value="">Elige producto…</option>
+                  {productos.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre}{p.formato_detalle ? ` · ${p.formato_detalle}` : ` · ${p.formato}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-2 items-center">
+                <div className="w-32 shrink-0">
+                  <input
+                    type="text"
+                    value={it.cantidad}
+                    onChange={(e) => updateItem(idx, { cantidad: e.target.value })}
+                    className="admin-input"
+                    placeholder="cantidad"
+                    aria-label="Cantidad"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeItem(idx)}
+                  aria-label="Quitar producto"
+                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-muted hover:text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
             </div>
           ))}
           {state.items.length === 0 && (
