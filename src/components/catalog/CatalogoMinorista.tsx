@@ -6,6 +6,7 @@ import { ProductCard } from "./ProductCard";
 import { Truck, CalendarDays, MapPin, Clock, User, Info, ShoppingBasket } from "lucide-react";
 import { DESPACHO_PARTICULARES } from "@/lib/despacho";
 import { formatPrice } from "@/lib/utils";
+import { ClientMarquee } from "@/components/layout/ClientMarquee";
 import type { Producto, PromocionConProducto } from "@/lib/supabase/types";
 
 interface CatalogoMinoristaProps {
@@ -106,6 +107,9 @@ export function CatalogoMinorista({ productos, promociones }: CatalogoMinoristaP
           </p>
         </div>
       </section>
+
+      {/* Clientes que confían en nosotros */}
+      <ClientMarquee />
 
       {/* Despachos */}
       <section id="despachos" className="max-w-7xl mx-auto px-4 py-14 md:py-16">
