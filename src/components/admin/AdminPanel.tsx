@@ -211,9 +211,27 @@ export default function AdminPanel() {
     };
   }, [authenticated, fetchPedidos, fetchProductos, fetchEspecialidades, fetchPromociones, fetchConfig]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.trim()) setAuthenticated(true);
+    if (!password.trim()) return;
+    setLoginError("");
+    setLoginLoading(true);
+    try {
+      const res = await fetch("/api/productos", {
+        headers: { "x-admin-password": password },
+      });
+      if (res.ok) {
+        setAuthenticated(true);
+      } else {
+        setLoginError("Contraseña incorrecta");
+      }
+    } catch {
+      setLoginError("No se pudo conectar. Intenta de nuevo.");
+    }
+    setLoginLoading(false);
   };
 
   const handleEstadoChange = async (id: string, estado: EstadoPedido) => {
@@ -421,18 +439,30 @@ export default function AdminPanel() {
               id="admin-pass"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-border focus:border-green-600"
+              onChange={(e) => { setPassword(e.target.value); setLoginError(""); }}
+              className={cn(
+                "w-full px-4 py-3 rounded-xl border focus:border-green-600",
+                loginError ? "border-red-400" : "border-border"
+              )}
               placeholder="Contraseña de admin"
               autoFocus
             />
+            {loginError && (
+              <p className="text-sm text-error mt-2 font-medium">{loginError}</p>
+            )}
           </div>
           <button
             type="submit"
-            className="w-full bg-green-700 text-white py-3 rounded-xl font-semibold hover:bg-green-600 transition-colors duration-150 flex items-center justify-center gap-2 min-h-[48px]"
+            disabled={loginLoading || !password.trim()}
+            className={cn(
+              "w-full py-3 rounded-xl font-semibold transition-colors duration-150 flex items-center justify-center gap-2 min-h-[48px]",
+              loginLoading || !password.trim()
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-green-700 text-white hover:bg-green-600"
+            )}
           >
             <LogIn size={18} />
-            Entrar
+            {loginLoading ? "Verificando..." : "Entrar"}
           </button>
         </form>
       </div>
