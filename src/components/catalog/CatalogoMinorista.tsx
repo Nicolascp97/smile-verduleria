@@ -1,13 +1,34 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { ProductGrid } from "./ProductGrid";
 import { ProductCard } from "./ProductCard";
-import { Truck, CalendarDays, MapPin, Clock, User, Info, ShoppingBasket } from "lucide-react";
+import { Truck, CalendarDays, MapPin, Clock, User, Info, ShoppingBasket, X, Check } from "lucide-react";
 import { DESPACHO_PARTICULARES } from "@/lib/despacho";
 import { formatPrice } from "@/lib/utils";
 import { ClientMarquee } from "@/components/layout/ClientMarquee";
 import type { Producto, PromocionConProducto } from "@/lib/supabase/types";
+
+// Contenido de la Canasta Básica (según productos-unificado.md)
+const CANASTA_BASICA = [
+  "Papa — 5 kilos",
+  "Cebolla — 2 kilos",
+  "Ajo — 3 unidades",
+  "Tomate — 2 kilos",
+  "Zanahoria — 1 kilo",
+  "Palta — 1 kilo",
+  "Lechuga — 2 unidades",
+  "Zapallo camote — 1 corte",
+  "Pimentón rojo — 1 unidad",
+  "Cilantro — 1 atado",
+  "Cebollín — 1 atado",
+  "Brócoli — 1 unidad",
+  "Plátano — 2 kilos",
+  "Naranja — 2 kilos",
+  "Manzana — 1 kilo",
+  "Kiwi — 1 kilo",
+];
 
 interface CatalogoMinoristaProps {
   productos: Producto[];
@@ -15,6 +36,8 @@ interface CatalogoMinoristaProps {
 }
 
 export function CatalogoMinorista({ productos, promociones }: CatalogoMinoristaProps) {
+  const [canastaOpen, setCanastaOpen] = useState(false);
+
   return (
     <div>
       {/* Hero */}
@@ -77,14 +100,18 @@ export function CatalogoMinorista({ productos, promociones }: CatalogoMinoristaP
 
           {/* Canastas predeterminadas (debajo de Particular) */}
           <div className="flex flex-col sm:flex-row justify-center gap-4 max-w-xl mx-auto">
-            <div className="bg-white/90 backdrop-blur-sm border-2 border-green-700 rounded-2xl px-6 py-5 flex items-center gap-4 flex-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setCanastaOpen(true)}
+              className="bg-white/90 backdrop-blur-sm border-2 border-green-700 rounded-2xl px-6 py-5 flex items-center gap-4 flex-1 shadow-sm text-left hover:bg-white hover:shadow-lg transition-all duration-200 cursor-pointer"
+            >
               <ShoppingBasket size={32} className="text-green-700 shrink-0" />
               <div className="text-left">
                 <p className="font-bold text-ink text-sm">Canasta Básica</p>
-                <p className="text-xs text-muted">Un poco de todo</p>
+                <p className="text-xs text-muted">Un poco de todo · <span className="text-green-700 font-semibold">Ver detalle</span></p>
                 <p className="font-bold text-green-700 text-lg mt-1">{formatPrice(30000)}</p>
               </div>
-            </div>
+            </button>
             <div className="bg-white/90 backdrop-blur-sm border-2 border-green-700 rounded-2xl px-6 py-5 flex items-center gap-4 flex-1 shadow-sm">
               <ShoppingBasket size={32} className="text-green-700 shrink-0" />
               <div className="text-left">
@@ -224,6 +251,65 @@ export function CatalogoMinorista({ productos, promociones }: CatalogoMinoristaP
         </h2>
         <ProductGrid productos={productos} tipo="minorista" />
       </section>
+
+      {/* Popup detalle Canasta Básica */}
+      {canastaOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+          onClick={() => setCanastaOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Detalle de la Canasta Básica"
+        >
+          <div
+            className="bg-surface rounded-3xl max-w-md w-full max-h-[85vh] overflow-hidden flex flex-col shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-green-700 text-white px-6 py-5 flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <ShoppingBasket size={28} className="shrink-0" />
+                <div>
+                  <h3 className="font-heading text-xl font-bold leading-tight">Canasta Básica</h3>
+                  <p className="text-sm text-white/85">{formatPrice(30000)} · Un poco de todo</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCanastaOpen(false)}
+                aria-label="Cerrar"
+                className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors duration-150"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Lista de productos */}
+            <div className="p-6 overflow-y-auto">
+              <p className="text-sm text-muted mb-4">Esto es lo que incluye tu canasta:</p>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5">
+                {CANASTA_BASICA.map((item) => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-ink">
+                    <span className="w-6 h-6 rounded-full bg-green-50 flex items-center justify-center shrink-0">
+                      <Check size={14} className="text-green-700" />
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-border">
+              <button
+                onClick={() => setCanastaOpen(false)}
+                className="w-full bg-green-700 text-white py-3 rounded-xl font-semibold hover:bg-green-600 transition-colors duration-150 min-h-[48px]"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
