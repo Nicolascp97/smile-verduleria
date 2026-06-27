@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { ProductGrid } from "./ProductGrid";
 import { ProductCard } from "./ProductCard";
+import Link from "next/link";
 import { Truck, CalendarDays, MapPin, Clock, User, Info, ShoppingBasket, X, Check, MessageCircle } from "lucide-react";
+import { FlagIcon } from "@/components/ui/FlagIcon";
 import { DESPACHO_PARTICULARES } from "@/lib/despacho";
 import { formatPrice } from "@/lib/utils";
 import { getWhatsAppUrl } from "@/lib/whatsapp";
@@ -84,27 +86,27 @@ export function CatalogoMinorista({ productos, promociones, canastas }: Catalogo
               <User size={28} className="text-green-700" />
               <span className="font-semibold text-ink text-sm">Particular</span>
             </a>
-            <a
-              href="/mayorista"
+            <Link
+              href="/mayorista?cat=chilena"
               className="bg-white/90 backdrop-blur-sm border border-border rounded-2xl px-4 py-5 flex flex-col items-center gap-2 hover:bg-white hover:shadow-lg transition-all duration-200"
             >
-              <span className="text-2xl">🇨🇱</span>
+              <FlagIcon code="cl" label="Bandera de Chile" size={32} />
               <span className="font-semibold text-ink text-sm text-center">Gastronomía Chilena</span>
-            </a>
-            <a
-              href="/mayorista"
+            </Link>
+            <Link
+              href="/mayorista?cat=china"
               className="bg-white/90 backdrop-blur-sm border border-border rounded-2xl px-4 py-5 flex flex-col items-center gap-2 hover:bg-white hover:shadow-lg transition-all duration-200"
             >
-              <span className="text-2xl">🇨🇳🇰🇷</span>
+              <FlagIcon code="cn" label="Bandera de China" size={32} />
               <span className="font-semibold text-ink text-sm text-center">Gastronomía China Coreana</span>
-            </a>
-            <a
-              href="/mayorista"
+            </Link>
+            <Link
+              href="/mayorista?cat=peruana"
               className="bg-white/90 backdrop-blur-sm border border-border rounded-2xl px-4 py-5 flex flex-col items-center gap-2 hover:bg-white hover:shadow-lg transition-all duration-200"
             >
-              <span className="text-2xl">🇵🇪</span>
+              <FlagIcon code="pe" label="Bandera de Perú" size={32} />
               <span className="font-semibold text-ink text-sm text-center">Gastronomía Peruana</span>
-            </a>
+            </Link>
           </div>
 
           {/* Canastas predeterminadas (debajo de Particular) */}

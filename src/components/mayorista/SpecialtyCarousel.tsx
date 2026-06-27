@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { FlagIcon, ESPECIALIDAD_FLAG } from "@/components/ui/FlagIcon";
 import type { EspecialidadConConteo } from "@/lib/supabase/types";
 
 interface SpecialtyCarouselProps {
@@ -58,7 +59,11 @@ export function SpecialtyCarousel({
                 background: `linear-gradient(135deg, ${esp.color_from}, ${esp.color_to})`,
               }}
             >
-              <span className="text-2xl">{esp.emoji}</span>
+              {ESPECIALIDAD_FLAG[esp.slug] ? (
+                <FlagIcon code={ESPECIALIDAD_FLAG[esp.slug]} label={esp.nombre} size={28} />
+              ) : (
+                <span className="text-2xl">{esp.emoji}</span>
+              )}
               <div className="text-left text-white">
                 <span className="block font-semibold text-sm leading-tight">
                   {esp.nombre}

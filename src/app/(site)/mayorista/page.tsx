@@ -83,13 +83,19 @@ async function getProductosPorEspecialidad(): Promise<Record<string, string[]>> 
   }
 }
 
-export default async function MayoristaPage() {
-  const [productos, descuentos, especialidades, productosPorEspecialidad] = await Promise.all([
-    getProductosMayorista(),
-    getDescuentos(),
-    getEspecialidades(),
-    getProductosPorEspecialidad(),
-  ]);
+export default async function MayoristaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cat?: string }>;
+}) {
+  const [{ cat }, productos, descuentos, especialidades, productosPorEspecialidad] =
+    await Promise.all([
+      searchParams,
+      getProductosMayorista(),
+      getDescuentos(),
+      getEspecialidades(),
+      getProductosPorEspecialidad(),
+    ]);
 
   return (
     <CatalogoMayorista
@@ -97,6 +103,7 @@ export default async function MayoristaPage() {
       descuentos={descuentos}
       especialidades={especialidades}
       productosPorEspecialidad={productosPorEspecialidad}
+      initialSlug={cat ?? null}
     />
   );
 }

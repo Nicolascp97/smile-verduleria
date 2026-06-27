@@ -14,6 +14,7 @@ interface CatalogoMayoristaProps {
   descuentos: DescuentoVolumen[];
   especialidades: EspecialidadConConteo[];
   productosPorEspecialidad: Record<string, string[]>;
+  initialSlug?: string | null;
 }
 
 export function CatalogoMayorista({
@@ -21,8 +22,11 @@ export function CatalogoMayorista({
   descuentos,
   especialidades,
   productosPorEspecialidad,
+  initialSlug,
 }: CatalogoMayoristaProps) {
-  const [especialidadActiva, setEspecialidadActiva] = useState<string | null>(null);
+  const [especialidadActiva, setEspecialidadActiva] = useState<string | null>(
+    () => (initialSlug && especialidades.some((e) => e.slug === initialSlug) ? initialSlug : null)
+  );
 
   const productosFiltrados = useMemo(() => {
     if (!especialidadActiva) return productos;
