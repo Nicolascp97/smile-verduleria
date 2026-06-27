@@ -115,6 +115,32 @@ export interface Configuracion {
   valor: string;
 }
 
+export interface Canasta {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  precio: number;
+  activo: boolean;
+  orden: number;
+  created_at: string;
+}
+
+export interface CanastaItem {
+  id: string;
+  canasta_id: string;
+  producto_id: string;
+  cantidad: string;
+  orden: number;
+}
+
+export interface CanastaItemConProducto extends CanastaItem {
+  producto: Pick<Producto, "nombre" | "formato"> | null;
+}
+
+export interface CanastaConItems extends Canasta {
+  items: CanastaItemConProducto[];
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -152,6 +178,16 @@ export interface Database {
         Row: Configuracion;
         Insert: Configuracion;
         Update: Partial<Configuracion>;
+      };
+      canastas: {
+        Row: Canasta;
+        Insert: Omit<Canasta, "id" | "created_at">;
+        Update: Partial<Omit<Canasta, "id" | "created_at">>;
+      };
+      canasta_items: {
+        Row: CanastaItem;
+        Insert: Omit<CanastaItem, "id">;
+        Update: Partial<Omit<CanastaItem, "id">>;
       };
     };
   };

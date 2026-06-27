@@ -28,6 +28,7 @@ import {
   Percent,
   Megaphone,
   Camera,
+  ShoppingBasket,
 } from "lucide-react";
 import Image from "next/image";
 import type {
@@ -39,6 +40,7 @@ import type {
   Formato,
   Especialidad,
   PromocionConProducto,
+  CanastaConItems,
 } from "@/lib/supabase/types";
 
 const ESTADOS: { value: EstadoPedido; label: string; color: string }[] = [
@@ -84,6 +86,15 @@ const EMPTY_NEW_PROMO = {
 
 type NewPromoState = typeof EMPTY_NEW_PROMO;
 
+const EMPTY_NEW_CANASTA = {
+  nombre: "",
+  descripcion: "",
+  precio: "" as string | number,
+  items: [] as { producto_id: string; cantidad: string }[],
+};
+
+type NewCanastaState = typeof EMPTY_NEW_CANASTA;
+
 export default function AdminPanel() {
   const [password, setPassword] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
@@ -91,7 +102,7 @@ export default function AdminPanel() {
   const [filtroEstado, setFiltroEstado] = useState<EstadoPedido | "todos">("todos");
   const [filtroTipo, setFiltroTipo] = useState<"minorista" | "mayorista" | "todos">("todos");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [tab, setTab] = useState<"pedidos" | "productos" | "especialidades" | "promociones">("pedidos");
+  const [tab, setTab] = useState<"pedidos" | "productos" | "especialidades" | "promociones" | "canastas">("pedidos");
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
@@ -114,6 +125,13 @@ export default function AdminPanel() {
   const [editingPromo, setEditingPromo] = useState<string | null>(null);
   const [editPromoValues, setEditPromoValues] = useState<Partial<NewPromoState>>({});
   const [confirmDeletePromo, setConfirmDeletePromo] = useState<string | null>(null);
+
+  const [canastas, setCanastas] = useState<CanastaConItems[]>([]);
+  const [showAddCanasta, setShowAddCanasta] = useState(false);
+  const [newCanasta, setNewCanasta] = useState<NewCanastaState>(EMPTY_NEW_CANASTA);
+  const [editingCanasta, setEditingCanasta] = useState<string | null>(null);
+  const [editCanastaValues, setEditCanastaValues] = useState<Partial<NewCanastaState>>({});
+  const [confirmDeleteCanasta, setConfirmDeleteCanasta] = useState<string | null>(null);
 
   const supabaseRef = useRef(createBrowserClient());
 
@@ -188,6 +206,19 @@ export default function AdminPanel() {
     }
   }, [authenticated, password]);
 
+  const fetchCanastas = useCallback(async () => {
+    if (!authenticated) return;
+    try {
+      const res = await fetch("/api/canastas", {
+        headers: { "x-admin-password": password },
+      });
+      const data = await res.json();
+      if (data.canastas) setCanastas(data.canastas);
+    } catch (err) {
+      console.error("Error fetching canastas:", err);
+    }
+  }, [authenticated, password]);
+
   useEffect(() => {
     if (!authenticated) return;
     fetchPedidos();
@@ -195,6 +226,7 @@ export default function AdminPanel() {
     fetchEspecialidades();
     fetchPromociones();
     fetchConfig();
+    fetchCanastas();
 
     const supabase = supabaseRef.current;
     const channel = supabase
@@ -209,7 +241,7 @@ export default function AdminPanel() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [authenticated, fetchPedidos, fetchProductos, fetchEspecialidades, fetchPromociones, fetchConfig]);
+  }, [authenticated, fetchPedidos, fetchProductos, fetchEspecialidades, fetchPromociones, fetchConfig, fetchCanastas]);
 
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
@@ -389,6 +421,59 @@ export default function AdminPanel() {
     });
     setConfirmDeletePromo(null);
     fetchPromociones();
+  };
+
+  // ---------- Canastas ----------
+  const buildCanastaPayload = (c: NewCanastaState) => ({
+    nombre: c.nombre.trim(),
+    descripcion: c.descripcion || null,
+    precio: c.precio !== "" ? Number(c.precio) : 0,
+    items: c.items
+      .filter((it) => it.producto_id)
+      .map((it, idx) => ({ producto_id: it.producto_id, cantidad: it.cantidad || "", orden: idx })),
+  });
+
+  const handleAddCanasta = async () => {
+    if (!newCanasta.nombre.trim()) return;
+    await fetch("/api/canastas", {
+      method: "POST",
+      headers: adminHeaders(),
+      body: JSON.stringify({ ...buildCanastaPayload(newCanasta), orden: canastas.length }),
+    });
+    setShowAddCanasta(false);
+    setNewCanasta(EMPTY_NEW_CANASTA);
+    fetchCanastas();
+  };
+
+  const handleSaveCanasta = async (id: string) => {
+    const payload = buildCanastaPayload({ ...EMPTY_NEW_CANASTA, ...editCanastaValues } as NewCanastaState);
+    await fetch("/api/canastas", {
+      method: "PATCH",
+      headers: adminHeaders(),
+      body: JSON.stringify({ id, ...payload }),
+    });
+    setEditingCanasta(null);
+    setEditCanastaValues({});
+    fetchCanastas();
+  };
+
+  const handleToggleCanastaActivo = async (id: string, activo: boolean) => {
+    await fetch("/api/canastas", {
+      method: "PATCH",
+      headers: adminHeaders(),
+      body: JSON.stringify({ id, activo: !activo }),
+    });
+    fetchCanastas();
+  };
+
+  const handleDeleteCanasta = async (id: string) => {
+    await fetch("/api/canastas", {
+      method: "DELETE",
+      headers: adminHeaders(),
+      body: JSON.stringify({ id }),
+    });
+    setConfirmDeleteCanasta(null);
+    fetchCanastas();
   };
 
   const filteredPedidos = pedidos.filter((p) => {
@@ -575,6 +660,16 @@ export default function AdminPanel() {
             <Megaphone size={16} />
             Promociones
           </button>
+          <button
+            onClick={() => setTab("canastas")}
+            className={cn(
+              "flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors duration-150 min-h-[44px]",
+              tab === "canastas" ? "bg-green-700 text-white" : "text-muted hover:text-ink"
+            )}
+          >
+            <ShoppingBasket size={16} />
+            Canastas
+          </button>
         </div>
 
         {tab === "pedidos" && (
@@ -649,6 +744,27 @@ export default function AdminPanel() {
             confirmDeletePromo={confirmDeletePromo}
             setConfirmDeletePromo={setConfirmDeletePromo}
             onDeletePromo={handleDeletePromo}
+          />
+        )}
+
+        {tab === "canastas" && (
+          <CanastasView
+            canastas={canastas}
+            productos={productos}
+            showAdd={showAddCanasta}
+            setShowAdd={setShowAddCanasta}
+            newCanasta={newCanasta}
+            setNewCanasta={setNewCanasta}
+            onAdd={handleAddCanasta}
+            editing={editingCanasta}
+            setEditing={setEditingCanasta}
+            editValues={editCanastaValues}
+            setEditValues={setEditCanastaValues}
+            onSave={handleSaveCanasta}
+            onToggleActivo={handleToggleCanastaActivo}
+            confirmDelete={confirmDeleteCanasta}
+            setConfirmDelete={setConfirmDeleteCanasta}
+            onDelete={handleDeleteCanasta}
           />
         )}
       </div>
@@ -1643,6 +1759,286 @@ function PromocionCard({
                 title={promo.activo ? "Click para desactivar" : "Click para activar"}
               >
                 {promo.activo ? "Activa" : "Inactiva"}
+              </button>
+              <button onClick={onStartEdit} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm text-ink hover:bg-subtle min-h-[40px] mt-1">
+                <Edit3 size={15} /> Editar
+              </button>
+              <button onClick={onAskDelete} className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm text-muted hover:text-red-600 hover:bg-red-50 min-h-[40px] mt-1">
+                <Trash2 size={15} />
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============ Canastas View ============
+function canastaToForm(c: CanastaConItems): NewCanastaState {
+  return {
+    nombre: c.nombre,
+    descripcion: c.descripcion ?? "",
+    precio: c.precio ?? "",
+    items: c.items.map((it) => ({ producto_id: it.producto_id, cantidad: it.cantidad })),
+  };
+}
+
+function CanastaForm({
+  state, setState, productos,
+}: {
+  state: NewCanastaState;
+  setState: (v: NewCanastaState) => void;
+  productos: Producto[];
+}) {
+  const addItem = () => setState({ ...state, items: [...state.items, { producto_id: "", cantidad: "" }] });
+  const updateItem = (idx: number, patch: Partial<{ producto_id: string; cantidad: string }>) =>
+    setState({ ...state, items: state.items.map((it, i) => (i === idx ? { ...it, ...patch } : it)) });
+  const removeItem = (idx: number) =>
+    setState({ ...state, items: state.items.filter((_, i) => i !== idx) });
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Field label="Nombre *">
+          <input type="text" value={state.nombre} onChange={(e) => setState({ ...state, nombre: e.target.value })} className="admin-input" placeholder="Ej: Canasta Básica" />
+        </Field>
+        <Field label="Precio">
+          <input type="number" value={state.precio} onChange={(e) => setState({ ...state, precio: e.target.value })} className="admin-input" placeholder="$" min={0} />
+        </Field>
+        <label className="sm:col-span-2 block">
+          <span className="text-xs font-medium text-muted block mb-1">Descripción</span>
+          <input type="text" value={state.descripcion} onChange={(e) => setState({ ...state, descripcion: e.target.value })} className="admin-input" placeholder="Ej: Un poco de todo" />
+        </label>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-muted">Productos de la canasta ({state.items.length})</span>
+          <button
+            type="button"
+            onClick={addItem}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-700 text-white text-xs font-medium hover:bg-green-600 min-h-[36px]"
+          >
+            <Plus size={14} /> Agregar producto
+          </button>
+        </div>
+        <div className="space-y-2">
+          {state.items.map((it, idx) => (
+            <div key={idx} className="flex gap-2 items-center">
+              <select
+                value={it.producto_id}
+                onChange={(e) => updateItem(idx, { producto_id: e.target.value })}
+                className="admin-input flex-1 min-w-0"
+              >
+                <option value="">Elige producto…</option>
+                {productos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}{p.formato_detalle ? ` · ${p.formato_detalle}` : ` · ${p.formato}`}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={it.cantidad}
+                onChange={(e) => updateItem(idx, { cantidad: e.target.value })}
+                className="admin-input w-28 shrink-0"
+                placeholder="cantidad"
+                aria-label="Cantidad"
+              />
+              <button
+                type="button"
+                onClick={() => removeItem(idx)}
+                aria-label="Quitar producto"
+                className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-muted hover:text-red-600 hover:bg-red-50"
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+          ))}
+          {state.items.length === 0 && (
+            <p className="text-xs text-muted">Sin productos aún. Agrega el primero con el botón de arriba.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CanastasView({
+  canastas, productos, showAdd, setShowAdd, newCanasta, setNewCanasta, onAdd,
+  editing, setEditing, editValues, setEditValues, onSave, onToggleActivo,
+  confirmDelete, setConfirmDelete, onDelete,
+}: {
+  canastas: CanastaConItems[];
+  productos: Producto[];
+  showAdd: boolean;
+  setShowAdd: (v: boolean) => void;
+  newCanasta: NewCanastaState;
+  setNewCanasta: (v: NewCanastaState) => void;
+  onAdd: () => void;
+  editing: string | null;
+  setEditing: (v: string | null) => void;
+  editValues: Partial<NewCanastaState>;
+  setEditValues: (v: Partial<NewCanastaState>) => void;
+  onSave: (id: string) => void;
+  onToggleActivo: (id: string, activo: boolean) => void;
+  confirmDelete: string | null;
+  setConfirmDelete: (v: string | null) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <>
+      <div className="flex justify-end mb-5">
+        <button
+          onClick={() => setShowAdd(!showAdd)}
+          className={cn(
+            "flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-colors duration-150 min-h-[44px]",
+            showAdd ? "bg-gray-200 text-ink" : "bg-green-700 text-white hover:bg-green-600"
+          )}
+        >
+          {showAdd ? <X size={16} /> : <Plus size={16} />}
+          {showAdd ? "Cancelar" : "Agregar canasta"}
+        </button>
+      </div>
+
+      {showAdd && (
+        <div className="bg-surface rounded-2xl border border-border p-5 mb-5 space-y-3 animate-fade-in">
+          <h3 className="font-heading font-semibold text-ink flex items-center gap-2">
+            <Plus size={18} className="text-green-700" /> Nueva canasta
+          </h3>
+          <CanastaForm state={newCanasta} setState={setNewCanasta} productos={productos} />
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={onAdd}
+              disabled={!newCanasta.nombre.trim()}
+              className={cn(
+                "px-5 py-2.5 rounded-xl font-medium text-sm transition-colors duration-150 min-h-[44px]",
+                !newCanasta.nombre.trim() ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-green-700 text-white hover:bg-green-600"
+              )}
+            >
+              Guardar canasta
+            </button>
+          </div>
+        </div>
+      )}
+
+      <p className="text-xs text-muted mb-3">
+        {canastas.length} canasta{canastas.length === 1 ? "" : "s"} configurada{canastas.length === 1 ? "" : "s"}
+      </p>
+
+      {canastas.length === 0 ? (
+        <div className="text-center py-16 bg-surface rounded-2xl border border-border">
+          <ShoppingBasket size={40} className="mx-auto text-muted mb-3" />
+          <p className="text-muted">Aún no hay canastas. Agrega la primera.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {canastas.map((canasta) => (
+            <CanastaCard
+              key={canasta.id}
+              canasta={canasta}
+              productos={productos}
+              isEditing={editing === canasta.id}
+              isDeleting={confirmDelete === canasta.id}
+              editValues={editValues}
+              setEditValues={setEditValues}
+              onStartEdit={() => { setEditing(canasta.id); setEditValues(canastaToForm(canasta)); }}
+              onCancelEdit={() => { setEditing(null); setEditValues({}); }}
+              onSave={() => onSave(canasta.id)}
+              onToggleActivo={() => onToggleActivo(canasta.id, canasta.activo)}
+              onAskDelete={() => setConfirmDelete(canasta.id)}
+              onCancelDelete={() => setConfirmDelete(null)}
+              onConfirmDelete={() => onDelete(canasta.id)}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function CanastaCard({
+  canasta, productos, isEditing, isDeleting, editValues, setEditValues,
+  onStartEdit, onCancelEdit, onSave, onToggleActivo, onAskDelete, onCancelDelete, onConfirmDelete,
+}: {
+  canasta: CanastaConItems;
+  productos: Producto[];
+  isEditing: boolean;
+  isDeleting: boolean;
+  editValues: Partial<NewCanastaState>;
+  setEditValues: (v: Partial<NewCanastaState>) => void;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSave: () => void;
+  onToggleActivo: () => void;
+  onAskDelete: () => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
+}) {
+  return (
+    <div className={cn(
+      "bg-surface rounded-2xl border p-4 flex flex-col gap-3 transition-colors duration-150",
+      canasta.activo ? "border-border" : "border-dashed border-gray-300 opacity-70"
+    )}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="font-semibold text-ink leading-tight">{canasta.nombre}</h3>
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+            <span className="font-heading font-bold text-green-700">{formatPrice(canasta.precio)}</span>
+            <span className="text-xs text-muted">· {canasta.items.length} producto{canasta.items.length === 1 ? "" : "s"}</span>
+          </div>
+        </div>
+        {canasta.activo
+          ? <CheckCircle size={18} className="text-green-600 shrink-0" aria-label="Activa" />
+          : <XCircle size={18} className="text-gray-400 shrink-0" aria-label="Inactiva" />}
+      </div>
+
+      {isEditing ? (
+        <div className="space-y-3">
+          <CanastaForm
+            state={{ ...EMPTY_NEW_CANASTA, ...editValues } as NewCanastaState}
+            setState={(v) => setEditValues(v)}
+            productos={productos}
+          />
+          <div className="flex gap-2 pt-1">
+            <button onClick={onSave} className="flex-1 flex items-center justify-center gap-1.5 bg-green-700 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-600 min-h-[40px]">
+              <Save size={15} /> Guardar
+            </button>
+            <button onClick={onCancelEdit} className="px-4 py-2 rounded-lg text-sm text-muted hover:bg-subtle min-h-[40px]">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {canasta.items.length > 0 && (
+            <p className="text-xs text-muted line-clamp-2">
+              {canasta.items.map((it) => it.producto?.nombre ?? "Producto").join(", ")}
+            </p>
+          )}
+
+          {isDeleting ? (
+            <div className="flex items-center justify-between gap-2 bg-red-50 rounded-xl px-3 py-2">
+              <span className="text-sm text-red-700 font-medium">¿Eliminar esta canasta?</span>
+              <div className="flex gap-2">
+                <button onClick={onConfirmDelete} className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 min-h-[36px]">Sí, eliminar</button>
+                <button onClick={onCancelDelete} className="px-3 py-1.5 rounded-lg bg-gray-200 text-ink text-xs font-medium hover:bg-gray-300 min-h-[36px]">No</button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2 pt-1 border-t border-border mt-1">
+              <button
+                onClick={onToggleActivo}
+                className={cn(
+                  "px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 min-h-[40px] mt-1",
+                  canasta.activo
+                    ? "bg-green-100 text-green-700 hover:bg-gray-200 hover:text-ink"
+                    : "bg-gray-100 text-muted hover:bg-green-100 hover:text-green-700"
+                )}
+                title={canasta.activo ? "Click para desactivar" : "Click para activar"}
+              >
+                {canasta.activo ? "Activa" : "Inactiva"}
               </button>
               <button onClick={onStartEdit} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm text-ink hover:bg-subtle min-h-[40px] mt-1">
                 <Edit3 size={15} /> Editar
