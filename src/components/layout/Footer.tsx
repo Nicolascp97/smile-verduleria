@@ -54,7 +54,7 @@ export function Footer() {
             </h4>
             <ul className="space-y-1 text-sm">
               <li>Particulares: sábado</li>
-              <li>Empresas: martes, miércoles y viernes</li>
+              <li>Empresas: martes, miércoles, viernes y sábado</li>
               <li>Horario: 9:00 – 17:00</li>
             </ul>
           </div>
