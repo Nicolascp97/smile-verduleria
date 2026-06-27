@@ -109,7 +109,7 @@ export function CatalogoMinorista({ productos, promociones }: CatalogoMinoristaP
               <div className="text-left">
                 <p className="font-bold text-ink text-sm">Canasta Básica</p>
                 <p className="text-xs text-muted">Un poco de todo · <span className="text-green-700 font-semibold">Ver detalle</span></p>
-                <p className="font-bold text-green-700 text-lg mt-1">{formatPrice(30000)}</p>
+                <p className="font-bold text-green-700 text-lg mt-1">{formatPrice(35000)}</p>
               </div>
             </button>
             <div className="bg-white/90 backdrop-blur-sm border-2 border-green-700 rounded-2xl px-6 py-5 flex items-center gap-4 flex-1 shadow-sm">
@@ -271,7 +271,7 @@ export function CatalogoMinorista({ productos, promociones }: CatalogoMinoristaP
                 <ShoppingBasket size={28} className="shrink-0" />
                 <div>
                   <h3 className="font-heading text-xl font-bold leading-tight">Canasta Básica</h3>
-                  <p className="text-sm text-white/85">{formatPrice(30000)} · Un poco de todo</p>
+                  <p className="text-sm text-white/85">{formatPrice(35000)} · Un poco de todo</p>
                 </div>
               </div>
               <button
