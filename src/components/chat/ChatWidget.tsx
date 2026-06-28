@@ -1,13 +1,63 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { X, Send, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { X, Send, Loader2, Plus, ShoppingCart } from "lucide-react";
+import { cn, formatPrice } from "@/lib/utils";
 import { useCartStore } from "@/store/cart";
+import type { Producto } from "@/lib/supabase/types";
 
 interface Message {
   role: "user" | "assistant";
-  content: string;
+  content: string; // lo que se envía a la API
+  displayText?: string; // lo que se muestra (si difiere del content)
+  products?: Producto[]; // tarjetas tocables bajo el mensaje
+  addedToCart?: { nombre: string; cantidad: number; formato: string }[];
+}
+
+// Placeholder por categoría cuando el producto no tiene foto
+const PLACEHOLDER_CAT: Record<string, string> = {
+  verduras: "verduras",
+  frutas: "frutas",
+  hierbas: "hierbas",
+  legumbres_granos: "legumbres",
+  huevos: "huevos",
+  abarrotes: "abarrotes",
+};
+
+function imagenProducto(p: Producto): string {
+  if (p.imagen_url) return p.imagen_url;
+  const cat = PLACEHOLDER_CAT[p.categoria] ?? "verduras";
+  return `/placeholders/${cat}.svg`;
+}
+
+function ProductMiniCard({ producto, onAdd }: { producto: Producto; onAdd: () => void }) {
+  const sinPrecio = !producto.precio_minorista || producto.precio_minorista <= 0;
+  return (
+    <button
+      type="button"
+      onClick={onAdd}
+      className="w-full flex items-center gap-3 bg-white border border-border rounded-xl p-2 mt-2 text-left hover:border-green-600 hover:bg-green-50/50 transition-colors duration-150 group"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={imagenProducto(producto)}
+        alt={producto.nombre}
+        width={44}
+        height={44}
+        className="w-11 h-11 rounded-lg object-cover bg-subtle shrink-0"
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-ink truncate">{producto.nombre}</p>
+        <p className="text-xs text-green-700 font-medium">
+          {sinPrecio ? "Precio a confirmar" : `${formatPrice(producto.precio_minorista!)} / ${producto.formato}`}
+        </p>
+      </div>
+      <span className="shrink-0 flex items-center gap-1 text-xs font-bold text-green-700 bg-green-100 group-hover:bg-green-200 rounded-full px-2.5 py-1.5 transition-colors duration-150">
+        <Plus size={13} strokeWidth={3} />
+        Agregar
+      </span>
+    </button>
+  );
 }
 
 export function ChatWidget() {
@@ -18,7 +68,10 @@ export function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { addItem } = useCartStore();
+  const openCart = useCartStore((s) => s.openCart);
+  const itemCount = useCartStore((s) =>
+    s.items.reduce((sum, i) => sum + i.cantidad, 0)
+  );
   const bubbleTriggered = useRef(false);
 
   const scrollToBottom = () => {
@@ -79,21 +132,47 @@ export function ChatWidget() {
     };
   }, []);
 
-  const handleSend = async () => {
-    const text = input.trim();
-    if (!text || loading) return;
+  // Suma una cantidad al carrito sumando sobre lo que ya exista
+  const sumarAlCarrito = (producto: Producto, cantidad: number) => {
+    const { items, addItem, updateQuantity } = useCartStore.getState();
+    const existing = items.find((i) => i.producto.id === producto.id);
+    if (existing) {
+      updateQuantity(producto.id, existing.cantidad + cantidad);
+    } else {
+      addItem(producto);
+      if (cantidad > 1) updateQuantity(producto.id, cantidad);
+    }
+  };
 
-    const userMessage: Message = { role: "user", content: text };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
-    setInput("");
+  // El cliente tocó una tarjeta de producto
+  const handleSelectProduct = (producto: Producto) => {
+    sumarAlCarrito(producto, 1);
+    sendMessage(`[agregué: ${producto.nombre}]`, `🛒 Agregué ${producto.nombre} al carrito`);
+  };
+
+  const sendMessage = async (apiText: string, displayText?: string) => {
+    if (loading) return;
+
+    const userMessage: Message = {
+      role: "user",
+      content: apiText,
+      ...(displayText ? { displayText } : {}),
+    };
+
+    // Para la API solo importan role + content de todo el historial
+    const history = [...messages, userMessage].map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    setMessages((prev) => [...prev, userMessage]);
     setLoading(true);
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ messages: history }),
       });
 
       if (!res.ok) throw new Error("Error en la respuesta");
@@ -104,7 +183,18 @@ export function ChatWidget() {
       const decoder = new TextDecoder();
       let assistantText = "";
 
+      // Mensaje del asistente que iremos completando
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      // Adjunta datos al último mensaje (el del asistente en curso)
+      const patchLast = (patch: Partial<Message>) => {
+        setMessages((prev) => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          updated[updated.length - 1] = { ...last, ...patch };
+          return updated;
+        });
+      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -117,18 +207,23 @@ export function ChatWidget() {
           if (!line.startsWith("data: ")) continue;
           try {
             const data = JSON.parse(line.slice(6));
+
             if (data.type === "text") {
               assistantText += data.content;
-              setMessages((prev) => {
-                const updated = [...prev];
-                updated[updated.length - 1] = {
-                  role: "assistant",
-                  content: assistantText,
-                };
-                return updated;
-              });
+              patchLast({ content: assistantText });
+            } else if (data.type === "products") {
+              const productos = data.productos as Producto[];
+              patchLast({ products: productos });
             } else if (data.type === "cart_action") {
-              // El agente agregó algo al carrito — handled on client via Zustand
+              const agregados = data.agregados as { producto: Producto; cantidad: number }[];
+              agregados.forEach(({ producto, cantidad }) => sumarAlCarrito(producto, cantidad));
+              patchLast({
+                addedToCart: agregados.map(({ producto, cantidad }) => ({
+                  nombre: producto.nombre,
+                  cantidad,
+                  formato: producto.formato,
+                })),
+              });
             }
           } catch {
             // línea incompleta, ignorar
@@ -140,12 +235,20 @@ export function ChatWidget() {
         ...prev,
         {
           role: "assistant",
-          content: "Lo siento, hubo un error. ¿Puedes intentar de nuevo?",
+          content: "",
+          displayText: "Lo siento, hubo un error. ¿Puedes intentar de nuevo?",
         },
       ]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSend = () => {
+    const text = input.trim();
+    if (!text || loading) return;
+    setInput("");
+    sendMessage(text);
   };
 
   if (hiddenByModal) return null;
@@ -235,42 +338,92 @@ export function ChatWidget() {
                 Smile
               </span>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              className="p-1 hover:bg-white/20 rounded-lg transition-colors duration-150"
-              aria-label="Cerrar chat"
-            >
-              <X size={18} />
-            </button>
+            <div className="flex items-center gap-1">
+              {itemCount > 0 && (
+                <button
+                  onClick={openCart}
+                  className="relative p-1.5 hover:bg-white/20 rounded-lg transition-colors duration-150"
+                  aria-label="Ver carrito"
+                >
+                  <ShoppingCart size={18} />
+                  <span className="absolute -top-0.5 -right-0.5 bg-accent-warm text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {itemCount}
+                  </span>
+                </button>
+              )}
+              <button
+                onClick={() => setOpen(false)}
+                className="p-1 hover:bg-white/20 rounded-lg transition-colors duration-150"
+                aria-label="Cerrar chat"
+              >
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           {/* Mensajes */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-ink font-medium mb-1">
-                  ¡Hola! Soy tu asistente de Smile
-                </p>
-                <p className="text-sm text-muted">
-                  Pregúntame por productos, precios o arma tu pedido conmigo.
-                </p>
+              <div className="flex items-start">
+                <div className="max-w-[85%] bg-subtle text-ink rounded-2xl rounded-bl-md px-4 py-2.5 text-sm leading-relaxed">
+                  ¡Hola! Soy Smile 🥬 Cuéntame qué necesitas y te ayudo a armar tu pedido al tiro.
+                </div>
               </div>
             )}
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                  msg.role === "user"
-                    ? "ml-auto bg-green-700 text-white rounded-br-md"
-                    : "bg-subtle text-ink rounded-bl-md"
-                )}
-              >
-                {msg.content || (
+            {messages.map((msg, i) => {
+              const text = msg.displayText ?? msg.content;
+              const isUser = msg.role === "user";
+              return (
+                <div key={i} className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
+                  {(text || (!isUser && !msg.products)) && (
+                    <div
+                      className={cn(
+                        "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                        isUser
+                          ? "bg-green-700 text-white rounded-br-md"
+                          : "bg-subtle text-ink rounded-bl-md"
+                      )}
+                    >
+                      {text || <Loader2 size={16} className="animate-spin text-muted" />}
+                    </div>
+                  )}
+
+                  {/* Tarjetas de producto tocables */}
+                  {!isUser && msg.products && msg.products.length > 0 && (
+                    <div className="w-[90%] max-w-[85%]">
+                      {msg.products.map((p) => (
+                        <ProductMiniCard
+                          key={p.id}
+                          producto={p}
+                          onAdd={() => handleSelectProduct(p)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Confirmación de agregado */}
+                  {!isUser && msg.addedToCart && msg.addedToCart.length > 0 && (
+                    <div className="mt-2 max-w-[85%] bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                      <p className="text-[11px] font-bold text-green-700 uppercase tracking-wide mb-0.5">
+                        ✓ Agregado al carrito
+                      </p>
+                      {msg.addedToCart.map((it, k) => (
+                        <p key={k} className="text-xs text-ink">
+                          {it.nombre} × {it.cantidad}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {loading && (
+              <div className="flex items-start">
+                <div className="bg-subtle rounded-2xl rounded-bl-md px-4 py-3">
                   <Loader2 size={16} className="animate-spin text-muted" />
-                )}
+                </div>
               </div>
-            ))}
+            )}
             <div ref={messagesEndRef} />
           </div>
 

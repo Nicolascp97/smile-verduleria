@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase/server";
 import { SYSTEM_PROMPT } from "@/lib/ai/system-prompt";
 import { AI_TOOLS } from "@/lib/ai/tools";
+import type { Producto } from "@/lib/supabase/types";
 
 const anthropic = new Anthropic();
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
@@ -19,15 +20,22 @@ function normalizarBusqueda(query: string): string {
   return q;
 }
 
+type ToolOutcome = {
+  // Lo que ve el modelo (JSON string)
+  forModel: string;
+  // Evento opcional para el cliente (tarjetas o carrito)
+  clientEvent?: Record<string, unknown>;
+};
+
 async function handleToolCall(
   name: string,
   input: Record<string, unknown>
-): Promise<string> {
+): Promise<ToolOutcome> {
   const supabase = createServerClient();
 
   switch (name) {
     case "buscar_productos": {
-      const campos = "id,nombre,categoria,formato,formato_detalle,stock,precio_minorista,precio_mayorista,disponible_minorista,disponible_mayorista";
+      let productos: Producto[] = [];
 
       if (input.query) {
         const raw = (input.query as string).trim();
@@ -35,32 +43,81 @@ async function handleToolCall(
         const variantes = [raw, ...(normalizado !== raw.toLowerCase() ? [normalizado] : [])];
 
         for (const termino of variantes) {
-          let q = supabase.from("productos").select(campos).eq("activo", true);
+          let q = supabase.from("productos").select("*").eq("activo", true);
           if (input.categoria) q = q.eq("categoria", input.categoria as string);
           q = q.ilike("nombre", `%${termino}%`);
-          const { data, error } = await q.limit(20);
-          if (error) return JSON.stringify({ error: error.message });
-          if (data?.length) return JSON.stringify(data);
+          const { data, error } = await q.limit(8);
+          if (error) return { forModel: JSON.stringify({ error: error.message }) };
+          if (data?.length) {
+            productos = data as Producto[];
+            break;
+          }
         }
-
-        return JSON.stringify({ mensaje: "No se encontraron productos con esa búsqueda." });
+      } else {
+        let query = supabase.from("productos").select("*").eq("activo", true);
+        if (input.categoria) query = query.eq("categoria", input.categoria as string);
+        const { data, error } = await query.limit(8);
+        if (error) return { forModel: JSON.stringify({ error: error.message }) };
+        productos = (data as Producto[]) ?? [];
       }
 
-      let query = supabase.from("productos").select(campos).eq("activo", true);
-      if (input.categoria) query = query.eq("categoria", input.categoria as string);
-      const { data, error } = await query.limit(20);
-      if (error) return JSON.stringify({ error: error.message });
-      if (!data?.length) return JSON.stringify({ mensaje: "No se encontraron productos con esa búsqueda." });
-      return JSON.stringify(data);
+      if (productos.length === 0) {
+        return { forModel: JSON.stringify({ mensaje: "No se encontraron productos con esa búsqueda." }) };
+      }
+
+      // Resumen liviano para el modelo
+      const paraModelo = productos.map((p) => ({
+        id: p.id,
+        nombre: p.nombre,
+        formato: p.formato,
+        formato_detalle: p.formato_detalle,
+        stock: p.stock,
+        precio_minorista: p.precio_minorista,
+        disponible_minorista: p.disponible_minorista,
+      }));
+
+      return {
+        forModel: JSON.stringify(paraModelo),
+        // Productos completos para renderizar tarjetas y poder agregarlos al carrito
+        clientEvent: { type: "products", productos },
+      };
     }
 
     case "agregar_al_carrito": {
-      return JSON.stringify({
-        accion: "agregar_al_carrito",
-        producto_id: input.producto_id,
-        cantidad: input.cantidad,
-        mensaje: "Producto agregado al carrito del cliente.",
-      });
+      const items = (input.items as Array<{ producto_id: string; cantidad: number }>) ?? [];
+      const ids = items.map((i) => i.producto_id);
+
+      if (ids.length === 0) {
+        return { forModel: JSON.stringify({ error: "No se indicaron productos." }) };
+      }
+
+      const { data, error } = await supabase
+        .from("productos")
+        .select("*")
+        .in("id", ids);
+
+      if (error) return { forModel: JSON.stringify({ error: error.message }) };
+
+      const productosById = new Map((data as Producto[]).map((p) => [p.id, p]));
+      const agregados = items
+        .map((i) => {
+          const producto = productosById.get(i.producto_id);
+          if (!producto) return null;
+          return { producto, cantidad: Math.max(1, Math.floor(i.cantidad)) };
+        })
+        .filter((x): x is { producto: Producto; cantidad: number } => x !== null);
+
+      if (agregados.length === 0) {
+        return { forModel: JSON.stringify({ error: "Los productos indicados no existen." }) };
+      }
+
+      return {
+        forModel: JSON.stringify({
+          ok: true,
+          agregados: agregados.map((a) => ({ nombre: a.producto.nombre, cantidad: a.cantidad })),
+        }),
+        clientEvent: { type: "cart_action", agregados },
+      };
     }
 
     case "crear_pedido": {
@@ -87,16 +144,18 @@ async function handleToolCall(
         .select()
         .single();
 
-      if (error) return JSON.stringify({ error: error.message });
-      return JSON.stringify({
-        ok: true,
-        pedido_id: data.id,
-        mensaje: "Pedido creado exitosamente.",
-      });
+      if (error) return { forModel: JSON.stringify({ error: error.message }) };
+      return {
+        forModel: JSON.stringify({
+          ok: true,
+          pedido_id: data.id,
+          mensaje: "Pedido creado exitosamente.",
+        }),
+      };
     }
 
     default:
-      return JSON.stringify({ error: "Herramienta no reconocida" });
+      return { forModel: JSON.stringify({ error: "Herramienta no reconocida" }) };
   }
 }
 
@@ -113,6 +172,12 @@ export async function POST(req: NextRequest) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
+        const send = (payload: Record<string, unknown>) => {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(payload)}\n\n`)
+          );
+        };
+
         try {
           let currentMessages = messages.map(
             (m: { role: string; content: string }) => ({
@@ -132,7 +197,6 @@ export async function POST(req: NextRequest) {
               messages: currentMessages,
             });
 
-            let assistantText = "";
             const toolUses: Array<{
               id: string;
               name: string;
@@ -141,12 +205,7 @@ export async function POST(req: NextRequest) {
 
             for (const block of response.content) {
               if (block.type === "text") {
-                assistantText += block.text;
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({ type: "text", content: block.text })}\n\n`
-                  )
-                );
+                send({ type: "text", content: block.text });
               } else if (block.type === "tool_use") {
                 toolUses.push({
                   id: block.id,
@@ -164,24 +223,16 @@ export async function POST(req: NextRequest) {
                   role: "user" as const,
                   content: await Promise.all(
                     toolUses.map(async (tu) => {
-                      const result = await handleToolCall(tu.name, tu.input);
-                      const parsed = JSON.parse(result);
+                      const outcome = await handleToolCall(tu.name, tu.input);
 
-                      if (
-                        tu.name === "agregar_al_carrito" &&
-                        parsed.accion === "agregar_al_carrito"
-                      ) {
-                        controller.enqueue(
-                          encoder.encode(
-                            `data: ${JSON.stringify({ type: "cart_action", ...parsed })}\n\n`
-                          )
-                        );
+                      if (outcome.clientEvent) {
+                        send(outcome.clientEvent);
                       }
 
                       return {
                         type: "tool_result" as const,
                         tool_use_id: tu.id,
-                        content: result,
+                        content: outcome.forModel,
                       };
                     })
                   ),
@@ -192,17 +243,14 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`)
-          );
+          send({ type: "done" });
           controller.close();
         } catch (error) {
           console.error("[Chat API] Error:", error);
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({ type: "error", content: "Error procesando tu mensaje. Intenta de nuevo." })}\n\n`
-            )
-          );
+          send({
+            type: "error",
+            content: "Error procesando tu mensaje. Intenta de nuevo.",
+          });
           controller.close();
         }
       },

@@ -31,20 +31,30 @@ export const AI_TOOLS: Tool[] = [
   {
     name: "agregar_al_carrito",
     description:
-      "Agrega un producto al carrito del cliente. Requiere el ID del producto y la cantidad.",
+      "Agrega uno o más productos al carrito del cliente. Úsala SOLO cuando el cliente confirmó explícitamente qué quiere y en qué cantidad. Requiere haber llamado buscar_productos antes para tener los producto_id correctos.",
     input_schema: {
       type: "object" as const,
       properties: {
-        producto_id: {
-          type: "string",
-          description: "UUID del producto a agregar",
-        },
-        cantidad: {
-          type: "number",
-          description: "Cantidad a agregar",
+        items: {
+          type: "array",
+          description: "Productos a agregar al carrito",
+          items: {
+            type: "object",
+            properties: {
+              producto_id: {
+                type: "string",
+                description: "UUID exacto del producto (del resultado de buscar_productos)",
+              },
+              cantidad: {
+                type: "number",
+                description: "Cantidad a agregar (entero positivo)",
+              },
+            },
+            required: ["producto_id", "cantidad"],
+          },
         },
       },
-      required: ["producto_id", "cantidad"],
+      required: ["items"],
     },
   },
   {
