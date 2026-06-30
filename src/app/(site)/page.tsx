@@ -1,6 +1,6 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { CatalogoMinorista } from "@/components/catalog/CatalogoMinorista";
-import type { Producto, PromocionConProducto, CanastaConItems } from "@/lib/supabase/types";
+import type { Producto, PromocionConProducto, CanastaConItems, DespachoZona } from "@/lib/supabase/types";
 
 // La home lee promociones, el interruptor global y el stock en cada visita,
 // para que los cambios hechos desde el panel se reflejen al instante.
@@ -13,7 +13,7 @@ async function getProductos(): Promise<Producto[]> {
       .from("productos")
       .select("*")
       .eq("activo", true)
-      .eq("disponible_minorista", true)
+      .eq("disponible_mayorista", true)
       .order("nombre");
 
     if (error) throw error;
@@ -75,11 +75,28 @@ async function getCanastas(): Promise<CanastaConItems[]> {
   }
 }
 
+async function getZonas(): Promise<DespachoZona[]> {
+  try {
+    const supabase = createServerClient();
+    const { data, error } = await supabase
+      .from("despacho_zonas")
+      .select("*")
+      .eq("activo", true)
+      .order("orden")
+      .order("nombre");
+    if (error) throw error;
+    return (data as DespachoZona[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export default async function HomePage() {
-  const [productos, promociones, canastas] = await Promise.all([
+  const [productos, promociones, canastas, zonas] = await Promise.all([
     getProductos(),
     getPromociones(),
     getCanastas(),
+    getZonas(),
   ]);
 
   return (
@@ -87,6 +104,7 @@ export default async function HomePage() {
       productos={productos}
       promociones={promociones}
       canastas={canastas}
+      zonas={zonas}
     />
   );
 }

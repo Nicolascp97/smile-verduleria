@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { X, Send, Loader2, Plus, ShoppingCart } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
+import { getWhatsAppUrl } from "@/lib/whatsapp";
 import { useCartStore } from "@/store/cart";
 import type { Producto } from "@/lib/supabase/types";
 
@@ -139,7 +140,7 @@ export function ChatWidget() {
     if (existing) {
       updateQuantity(producto.id, existing.cantidad + cantidad);
     } else {
-      addItem(producto);
+      addItem(producto, "mayorista");
       if (cantidad > 1) updateQuantity(producto.id, cantidad);
     }
   };
@@ -255,7 +256,7 @@ export function ChatWidget() {
 
   return (
     <>
-      {/* Botón flotante — personaje Smile */}
+      {/* Botones flotantes — WhatsApp + personaje Smile */}
       {!open && (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
           {showBubble && (
@@ -265,44 +266,60 @@ export function ChatWidget() {
               </p>
             </div>
           )}
-          <button
-            onClick={() => setOpen(true)}
-            className="group relative w-16 h-16 active:scale-90 transition-transform duration-150 cursor-pointer animate-smile-bounce"
-            aria-label="Abrir chat de asistencia"
-          >
-            <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-lg">
-              {/* Sombra suave */}
-              <ellipse cx="40" cy="74" rx="22" ry="4" fill="#000" opacity="0.08" />
-              {/* Cuerpo — naranja cálida */}
-              <circle cx="40" cy="42" r="28" fill="#F97316" />
-              <circle cx="40" cy="42" r="28" fill="url(#smileGrad)" />
-              {/* Brillo */}
-              <ellipse cx="32" cy="32" rx="10" ry="8" fill="white" opacity="0.18" transform="rotate(-20 32 32)" />
-              {/* Hojitas */}
-              <path d="M40 14 C38 8 42 2 48 4 C46 10 44 14 40 14Z" fill="#059669" />
-              <path d="M40 14 C36 10 30 6 28 8 C30 12 36 14 40 14Z" fill="#10B981" />
-              {/* Tallo */}
-              <rect x="39" y="12" width="2.5" height="5" rx="1" fill="#065F46" />
-              {/* Ojos */}
-              <circle cx="32" cy="40" r="3.5" fill="#1C1917" />
-              <circle cx="48" cy="40" r="3.5" fill="#1C1917" />
-              {/* Brillitos ojos */}
-              <circle cx="33.5" cy="38.5" r="1.2" fill="white" />
-              <circle cx="49.5" cy="38.5" r="1.2" fill="white" />
-              {/* Sonrisa grande — Smile! */}
-              <path d="M30 49 Q34 57 40 57 Q46 57 50 49" stroke="#1C1917" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-              {/* Mejillas rosadas */}
-              <circle cx="26" cy="48" r="4" fill="#FB923C" opacity="0.5" />
-              <circle cx="54" cy="48" r="4" fill="#FB923C" opacity="0.5" />
-              {/* Gradiente */}
-              <defs>
-                <radialGradient id="smileGrad" cx="0.4" cy="0.35" r="0.65">
-                  <stop offset="0%" stopColor="#FDBA74" stopOpacity="0.4" />
-                  <stop offset="100%" stopColor="#F97316" stopOpacity="0" />
-                </radialGradient>
-              </defs>
-            </svg>
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Botón WhatsApp */}
+            <a
+              href={getWhatsAppUrl("¡Hola Smile! Quiero hacer una consulta.")}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Contactar por WhatsApp"
+              className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform duration-150"
+              style={{ backgroundColor: "#25D366" }}
+            >
+              <svg viewBox="0 0 32 32" fill="white" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8">
+                <path d="M16 2C8.268 2 2 8.268 2 16c0 2.492.672 4.831 1.846 6.84L2 30l7.338-1.822A13.94 13.94 0 0016 30c7.732 0 14-6.268 14-14S23.732 2 16 2zm0 25.5c-2.32 0-4.484-.65-6.32-1.773l-.453-.27-4.354 1.082 1.104-4.244-.296-.464A11.47 11.47 0 014.5 16C4.5 9.649 9.649 4.5 16 4.5S27.5 9.649 27.5 16 22.351 27.5 16 27.5zm6.29-8.61c-.345-.173-2.04-1.006-2.356-1.12-.315-.115-.544-.173-.773.173-.23.345-.889 1.12-1.09 1.35-.2.23-.4.26-.745.086-.345-.173-1.455-.536-2.77-1.71-1.023-.912-1.714-2.04-1.914-2.385-.2-.345-.022-.531.15-.703.156-.155.345-.403.517-.604.173-.2.23-.345.345-.575.115-.23.058-.432-.029-.604-.086-.173-.773-1.862-1.06-2.55-.278-.668-.56-.577-.773-.587-.2-.01-.43-.012-.66-.012-.23 0-.604.086-.92.432-.316.345-1.204 1.177-1.204 2.867 0 1.69 1.233 3.322 1.405 3.552.173.23 2.428 3.708 5.886 5.198.823.355 1.465.567 1.965.726.826.263 1.578.226 2.172.137.662-.099 2.04-.834 2.327-1.639.287-.804.287-1.493.2-1.637-.086-.144-.316-.23-.66-.403z"/>
+              </svg>
+            </a>
+            {/* Botón Smile */}
+            <button
+              onClick={() => setOpen(true)}
+              className="group relative w-16 h-16 active:scale-90 transition-transform duration-150 cursor-pointer animate-smile-bounce"
+              aria-label="Abrir chat de asistencia"
+            >
+              <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-lg">
+                {/* Sombra suave */}
+                <ellipse cx="40" cy="74" rx="22" ry="4" fill="#000" opacity="0.08" />
+                {/* Cuerpo — naranja cálida */}
+                <circle cx="40" cy="42" r="28" fill="#F97316" />
+                <circle cx="40" cy="42" r="28" fill="url(#smileGrad)" />
+                {/* Brillo */}
+                <ellipse cx="32" cy="32" rx="10" ry="8" fill="white" opacity="0.18" transform="rotate(-20 32 32)" />
+                {/* Hojitas */}
+                <path d="M40 14 C38 8 42 2 48 4 C46 10 44 14 40 14Z" fill="#059669" />
+                <path d="M40 14 C36 10 30 6 28 8 C30 12 36 14 40 14Z" fill="#10B981" />
+                {/* Tallo */}
+                <rect x="39" y="12" width="2.5" height="5" rx="1" fill="#065F46" />
+                {/* Ojos */}
+                <circle cx="32" cy="40" r="3.5" fill="#1C1917" />
+                <circle cx="48" cy="40" r="3.5" fill="#1C1917" />
+                {/* Brillitos ojos */}
+                <circle cx="33.5" cy="38.5" r="1.2" fill="white" />
+                <circle cx="49.5" cy="38.5" r="1.2" fill="white" />
+                {/* Sonrisa grande — Smile! */}
+                <path d="M30 49 Q34 57 40 57 Q46 57 50 49" stroke="#1C1917" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                {/* Mejillas rosadas */}
+                <circle cx="26" cy="48" r="4" fill="#FB923C" opacity="0.5" />
+                <circle cx="54" cy="48" r="4" fill="#FB923C" opacity="0.5" />
+                {/* Gradiente */}
+                <defs>
+                  <radialGradient id="smileGrad" cx="0.4" cy="0.35" r="0.65">
+                    <stop offset="0%" stopColor="#FDBA74" stopOpacity="0.4" />
+                    <stop offset="100%" stopColor="#F97316" stopOpacity="0" />
+                  </radialGradient>
+                </defs>
+              </svg>
+            </button>
+          </div>
         </div>
       )}
 

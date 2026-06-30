@@ -141,6 +141,15 @@ export interface CanastaConItems extends Canasta {
   items: CanastaItemConProducto[];
 }
 
+export interface DespachoZona {
+  id: string;
+  nombre: string;
+  costo: number;
+  activo: boolean;
+  orden: number;
+  created_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -188,6 +197,11 @@ export interface Database {
         Row: CanastaItem;
         Insert: Omit<CanastaItem, "id">;
         Update: Partial<Omit<CanastaItem, "id">>;
+      };
+      despacho_zonas: {
+        Row: DespachoZona;
+        Insert: Omit<DespachoZona, "id" | "created_at">;
+        Update: Partial<Omit<DespachoZona, "id" | "created_at">>;
       };
     };
   };

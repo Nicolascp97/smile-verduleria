@@ -119,7 +119,7 @@ export function ProductCard({ producto, tipo, promo }: ProductCardProps) {
 
           {cantidad === 0 ? (
             <button
-              onClick={() => !sinStock && addItem(productoCarrito)}
+              onClick={() => !sinStock && addItem(productoCarrito, tipo)}
               disabled={sinStock}
               className={cn(
                 "mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm transition-all duration-150",

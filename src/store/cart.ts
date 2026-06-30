@@ -1,9 +1,11 @@
 import { create } from "zustand";
-import type { Producto } from "@/lib/supabase/types";
+import type { Producto, TipoPedido } from "@/lib/supabase/types";
 
 export interface CartItem {
   producto: Producto;
   cantidad: number;
+  precioUnit: number;
+  tipo: TipoPedido;
 }
 
 interface CartState {
@@ -15,7 +17,7 @@ interface CartState {
   zonaEnvio: string;
   notas: string;
 
-  addItem: (producto: Producto) => void;
+  addItem: (producto: Producto, tipo: TipoPedido) => void;
   removeItem: (productoId: string) => void;
   updateQuantity: (productoId: string, cantidad: number) => void;
   clearCart: () => void;
@@ -29,6 +31,7 @@ interface CartState {
   setNotas: (notas: string) => void;
   getTotal: () => number;
   getItemCount: () => number;
+  getTipoPedido: () => TipoPedido;
 }
 
 export const useCartStore = create<CartState>((set, get) => ({
@@ -40,7 +43,11 @@ export const useCartStore = create<CartState>((set, get) => ({
   zonaEnvio: "",
   notas: "",
 
-  addItem: (producto) => {
+  addItem: (producto, tipo) => {
+    const precioUnit =
+      tipo === "mayorista"
+        ? (producto.precio_mayorista ?? 0)
+        : (producto.precio_minorista ?? 0);
     const { items } = get();
     const existing = items.find((i) => i.producto.id === producto.id);
     if (existing) {
@@ -52,7 +59,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         ),
       });
     } else {
-      set({ items: [...items, { producto, cantidad: 1 }] });
+      set({ items: [...items, { producto, cantidad: 1, precioUnit, tipo }] });
     }
   },
 
@@ -93,11 +100,11 @@ export const useCartStore = create<CartState>((set, get) => ({
   setNotas: (notas) => set({ notas }),
 
   getTotal: () =>
-    get().items.reduce((sum, item) => {
-      const precio = item.producto.precio_minorista ?? 0;
-      return sum + precio * item.cantidad;
-    }, 0),
+    get().items.reduce((sum, item) => sum + item.precioUnit * item.cantidad, 0),
 
   getItemCount: () =>
     get().items.reduce((sum, item) => sum + item.cantidad, 0),
+
+  getTipoPedido: () =>
+    get().items[0]?.tipo ?? "mayorista",
 }));

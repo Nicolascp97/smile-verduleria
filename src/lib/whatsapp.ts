@@ -17,11 +17,7 @@ export function buildWhatsAppMessage(data: PedidoData): string {
     const formato = item.producto.formato_detalle
       ? `${item.producto.formato} (${item.producto.formato_detalle})`
       : item.producto.formato;
-    const precio =
-      data.tipo === "mayorista"
-        ? item.producto.precio_mayorista
-        : item.producto.precio_minorista;
-    return `• ${item.cantidad}x ${item.producto.nombre} (${formato}) — ${formatPrice(precio)}`;
+    return `• ${item.cantidad}x ${item.producto.nombre} (${formato}) — ${formatPrice(item.precioUnit)}`;
   });
 
   const mensaje = [

@@ -4,8 +4,8 @@ import { X, Trash2, Minus, Plus, MessageCircle } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { formatPrice, cn } from "@/lib/utils";
 import { buildWhatsAppMessage, getWhatsAppUrl } from "@/lib/whatsapp";
-import { DESPACHO_PARTICULARES } from "@/lib/despacho";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import type { DespachoZona } from "@/lib/supabase/types";
 
 export function CartDrawer() {
   const {
@@ -16,6 +16,7 @@ export function CartDrawer() {
     updateQuantity,
     clearCart,
     getTotal,
+    getTipoPedido,
     clienteNombre,
     clienteTelefono,
     clienteDireccion,
@@ -29,7 +30,16 @@ export function CartDrawer() {
   } = useCartStore();
 
   const [enviando, setEnviando] = useState(false);
+  const [zonas, setZonas] = useState<DespachoZona[]>([]);
   const total = getTotal();
+  const tipoPedido = getTipoPedido();
+
+  useEffect(() => {
+    fetch("/api/despacho-zonas")
+      .then((r) => r.json())
+      .then((d) => { if (d.zonas) setZonas(d.zonas); })
+      .catch(() => {});
+  }, []);
 
   const handleEnviarWhatsApp = async () => {
     if (!clienteNombre.trim() || !clienteTelefono.trim()) return;
@@ -41,7 +51,7 @@ export function CartDrawer() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tipo: "minorista",
+          tipo: tipoPedido,
           cliente_nombre: clienteNombre,
           cliente_telefono: clienteTelefono,
           cliente_direccion: clienteDireccion || null,
@@ -51,8 +61,8 @@ export function CartDrawer() {
             nombre: i.producto.nombre,
             formato: i.producto.formato,
             cantidad: i.cantidad,
-            precio_unit: i.producto.precio_minorista ?? 0,
-            subtotal: (i.producto.precio_minorista ?? 0) * i.cantidad,
+            precio_unit: i.precioUnit,
+            subtotal: i.precioUnit * i.cantidad,
           })),
           total,
           notas: notas || null,
@@ -71,7 +81,7 @@ export function CartDrawer() {
       clienteDireccion,
       zonaEnvio,
       notas,
-      tipo: "minorista",
+      tipo: tipoPedido,
     });
 
     window.open(getWhatsAppUrl(mensaje), "_blank");
@@ -135,9 +145,7 @@ export function CartDrawer() {
                       {item.producto.formato}
                     </p>
                     <p className="text-sm font-semibold text-ink mt-0.5">
-                      {formatPrice(
-                        (item.producto.precio_minorista ?? 0) * item.cantidad
-                      )}
+                      {formatPrice(item.precioUnit * item.cantidad)}
                     </p>
                   </div>
 
@@ -236,17 +244,25 @@ export function CartDrawer() {
                     className="w-full px-3 py-2.5 rounded-xl border border-border text-sm focus:border-green-600 bg-surface"
                   >
                     <option value="">Seleccionar comuna</option>
-                    {DESPACHO_PARTICULARES.comunas.map((comuna) => (
-                      <option key={comuna} value={comuna}>
-                        {comuna}
+                    {zonas.map((z) => (
+                      <option key={z.id} value={z.nombre}>
+                        {z.nombre}{z.costo > 0 ? ` — ${formatPrice(z.costo)}` : " — Gratis"}
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs text-muted mt-1.5 flex items-start gap-1">
-                    <span aria-hidden="true">🚚</span>
-                    Despacho a domicilio los <strong>{DESPACHO_PARTICULARES.dia.toLowerCase()}s</strong> ·{" "}
-                    {formatPrice(DESPACHO_PARTICULARES.costo)}
-                  </p>
+                  {(() => {
+                    const zonaSeleccionada = zonas.find((z) => z.nombre === zonaEnvio);
+                    return (
+                      <p className="text-xs text-muted mt-1.5 flex items-start gap-1">
+                        <span aria-hidden="true">🚚</span>
+                        {zonaSeleccionada
+                          ? zonaSeleccionada.costo > 0
+                            ? `Costo de despacho: ${formatPrice(zonaSeleccionada.costo)}`
+                            : "Despacho gratis"
+                          : "Selecciona tu comuna para ver el costo"}
+                      </p>
+                    );
+                  })()}
                 </div>
                 <div>
                   <label htmlFor="cart-notas" className="text-sm font-medium text-ink block mb-1">

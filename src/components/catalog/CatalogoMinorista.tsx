@@ -5,13 +5,14 @@ import Image from "next/image";
 import { ProductGrid } from "./ProductGrid";
 import { ProductCard } from "./ProductCard";
 import Link from "next/link";
-import { Truck, CalendarDays, MapPin, Clock, User, Info, ShoppingBasket, X, Check, MessageCircle } from "lucide-react";
+import { Truck, User, ShoppingBasket, X, Check, MessageCircle } from "lucide-react";
 import { FlagIcon } from "@/components/ui/FlagIcon";
-import { DESPACHO_PARTICULARES } from "@/lib/despacho";
+import { DESPACHO_EMPRESAS } from "@/lib/despacho";
 import { formatPrice } from "@/lib/utils";
 import { getWhatsAppUrl } from "@/lib/whatsapp";
 import { ClientMarquee } from "@/components/layout/ClientMarquee";
-import type { Producto, PromocionConProducto, CanastaConItems } from "@/lib/supabase/types";
+import { DespachoEmpresasCard } from "./DespachoEmpresasCard";
+import type { Producto, PromocionConProducto, CanastaConItems, DespachoZona } from "@/lib/supabase/types";
 
 // Arma el mensaje de WhatsApp con el detalle de una canasta
 function mensajeCanastaWhatsApp(canasta: CanastaConItems): string {
@@ -35,9 +36,10 @@ interface CatalogoMinoristaProps {
   productos: Producto[];
   promociones: PromocionConProducto[];
   canastas: CanastaConItems[];
+  zonas?: DespachoZona[];
 }
 
-export function CatalogoMinorista({ productos, promociones, canastas }: CatalogoMinoristaProps) {
+export function CatalogoMinorista({ productos, promociones, canastas, zonas }: CatalogoMinoristaProps) {
   const [canastaSel, setCanastaSel] = useState<CanastaConItems | null>(null);
 
   // Mientras el popup esté abierto, avisa al chat flotante para que se oculte
@@ -140,8 +142,7 @@ export function CatalogoMinorista({ productos, promociones, canastas }: Catalogo
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-center gap-3 text-center">
           <Truck size={24} aria-hidden="true" className="shrink-0" />
           <p className="font-medium text-sm md:text-base">
-            Despacho a domicilio los <strong>{DESPACHO_PARTICULARES.dia.toLowerCase()}s</strong> ·{" "}
-            {formatPrice(DESPACHO_PARTICULARES.costo)} · {DESPACHO_PARTICULARES.comunas.length} comunas
+            Despacho a empresas: <strong>{DESPACHO_EMPRESAS.dias.toLowerCase()}</strong> · Gratis sobre {formatPrice(DESPACHO_EMPRESAS.despachoGratisDesde)}
           </p>
         </div>
       </section>
@@ -165,77 +166,7 @@ export function CatalogoMinorista({ productos, promociones, canastas }: Catalogo
         </div>
 
         <div className="max-w-xl mx-auto">
-          {/* Particulares */}
-          <div className="bg-surface rounded-2xl border-2 border-green-700 p-6 md:p-8 relative overflow-hidden">
-            <div className="absolute top-0 right-0 bg-green-700 text-white text-[11px] font-bold tracking-wider uppercase px-4 py-1.5 rounded-bl-xl">
-              Personas
-            </div>
-
-            <div className="flex items-center gap-3 mb-5">
-              <span className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
-                <User size={24} className="text-green-700" />
-              </span>
-              <div>
-                <h3 className="font-heading text-xl font-bold text-ink">
-                  Despacho a Particulares
-                </h3>
-                <p className="text-sm text-muted">Para tu hogar</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 bg-green-50 rounded-xl px-4 py-3">
-                <CalendarDays size={20} className="text-green-700 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-ink text-sm">Solo los días {DESPACHO_PARTICULARES.dia.toLowerCase()}s</p>
-                  <p className="text-xs text-muted mt-0.5">Único día de reparto para hogares</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Clock size={20} className="text-green-700 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-ink text-sm">Horario: {DESPACHO_PARTICULARES.horario}</p>
-                  <p className="text-xs text-muted mt-0.5">Recibe tu pedido durante la mañana o tarde</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Truck size={20} className="text-green-700 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-ink text-sm">Costo de despacho: {formatPrice(DESPACHO_PARTICULARES.costo)}</p>
-                  <p className="text-xs text-muted mt-0.5">Tarifa fija por pedido</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <MapPin size={20} className="text-green-700 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-ink text-sm mb-1">Comunas disponibles</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {DESPACHO_PARTICULARES.comunas.map((comuna) => (
-                      <span
-                        key={comuna}
-                        className="inline-block bg-green-50 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full"
-                      >
-                        {comuna}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 pt-4 border-t border-border">
-              <div className="flex items-start gap-2">
-                <Info size={16} className="text-muted shrink-0 mt-0.5" />
-                <p className="text-xs text-muted leading-relaxed">
-                  Si tu comuna no aparece en la lista, por ahora no llegamos a esa zona,
-                  pero estamos ampliando la cobertura. Escríbenos por WhatsApp para más info.
-                </p>
-              </div>
-            </div>
-          </div>
+          <DespachoEmpresasCard zonas={zonas} />
         </div>
       </section>
 
@@ -260,7 +191,7 @@ export function CatalogoMinorista({ productos, promociones, canastas }: Catalogo
         <h2 className="font-heading text-2xl md:text-3xl font-bold text-ink mb-6">
           Todos los productos
         </h2>
-        <ProductGrid productos={productos} tipo="minorista" />
+        <ProductGrid productos={productos} tipo="mayorista" />
       </section>
 
       {/* Popup detalle de canasta */}

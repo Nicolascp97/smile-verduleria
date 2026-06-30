@@ -29,6 +29,7 @@ import {
   Megaphone,
   Camera,
   ShoppingBasket,
+  Truck,
 } from "lucide-react";
 import Image from "next/image";
 import type {
@@ -41,6 +42,7 @@ import type {
   Especialidad,
   PromocionConProducto,
   CanastaConItems,
+  DespachoZona,
 } from "@/lib/supabase/types";
 
 const ESTADOS: { value: EstadoPedido; label: string; color: string }[] = [
@@ -102,7 +104,7 @@ export default function AdminPanel() {
   const [filtroEstado, setFiltroEstado] = useState<EstadoPedido | "todos">("todos");
   const [filtroTipo, setFiltroTipo] = useState<"minorista" | "mayorista" | "todos">("todos");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [tab, setTab] = useState<"pedidos" | "productos" | "especialidades" | "promociones" | "canastas">("pedidos");
+  const [tab, setTab] = useState<"pedidos" | "productos" | "especialidades" | "promociones" | "canastas" | "despacho">("pedidos");
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
@@ -132,6 +134,14 @@ export default function AdminPanel() {
   const [editingCanasta, setEditingCanasta] = useState<string | null>(null);
   const [editCanastaValues, setEditCanastaValues] = useState<Partial<NewCanastaState>>({});
   const [confirmDeleteCanasta, setConfirmDeleteCanasta] = useState<string | null>(null);
+
+  const [zonas, setZonas] = useState<DespachoZona[]>([]);
+  const [showAddZona, setShowAddZona] = useState(false);
+  const [newZonaNombre, setNewZonaNombre] = useState("");
+  const [newZonaCosto, setNewZonaCosto] = useState<string | number>("");
+  const [editingZona, setEditingZona] = useState<string | null>(null);
+  const [editZonaValues, setEditZonaValues] = useState<Partial<DespachoZona>>({});
+  const [confirmDeleteZona, setConfirmDeleteZona] = useState<string | null>(null);
 
   const supabaseRef = useRef(createBrowserClient());
 
@@ -219,6 +229,19 @@ export default function AdminPanel() {
     }
   }, [authenticated, password]);
 
+  const fetchZonas = useCallback(async () => {
+    if (!authenticated) return;
+    try {
+      const res = await fetch("/api/despacho-zonas", {
+        headers: { "x-admin-password": password },
+      });
+      const data = await res.json();
+      if (data.zonas) setZonas(data.zonas);
+    } catch (err) {
+      console.error("Error fetching zonas:", err);
+    }
+  }, [authenticated, password]);
+
   useEffect(() => {
     if (!authenticated) return;
     fetchPedidos();
@@ -227,6 +250,7 @@ export default function AdminPanel() {
     fetchPromociones();
     fetchConfig();
     fetchCanastas();
+    fetchZonas();
 
     const supabase = supabaseRef.current;
     const channel = supabase
@@ -241,7 +265,7 @@ export default function AdminPanel() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [authenticated, fetchPedidos, fetchProductos, fetchEspecialidades, fetchPromociones, fetchConfig, fetchCanastas]);
+  }, [authenticated, fetchPedidos, fetchProductos, fetchEspecialidades, fetchPromociones, fetchConfig, fetchCanastas, fetchZonas]);
 
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
@@ -476,6 +500,50 @@ export default function AdminPanel() {
     fetchCanastas();
   };
 
+  // ---------- Zonas de despacho ----------
+  const handleAddZona = async () => {
+    if (!newZonaNombre.trim()) return;
+    await fetch("/api/despacho-zonas", {
+      method: "POST",
+      headers: adminHeaders(),
+      body: JSON.stringify({ nombre: newZonaNombre.trim(), costo: newZonaCosto !== "" ? Number(newZonaCosto) : 0, orden: zonas.length }),
+    });
+    setShowAddZona(false);
+    setNewZonaNombre("");
+    setNewZonaCosto("");
+    fetchZonas();
+  };
+
+  const handleSaveZona = async (id: string) => {
+    await fetch("/api/despacho-zonas", {
+      method: "PATCH",
+      headers: adminHeaders(),
+      body: JSON.stringify({ id, ...editZonaValues }),
+    });
+    setEditingZona(null);
+    setEditZonaValues({});
+    fetchZonas();
+  };
+
+  const handleToggleZonaActivo = async (id: string, activo: boolean) => {
+    await fetch("/api/despacho-zonas", {
+      method: "PATCH",
+      headers: adminHeaders(),
+      body: JSON.stringify({ id, activo: !activo }),
+    });
+    fetchZonas();
+  };
+
+  const handleDeleteZona = async (id: string) => {
+    await fetch("/api/despacho-zonas", {
+      method: "DELETE",
+      headers: adminHeaders(),
+      body: JSON.stringify({ id }),
+    });
+    setConfirmDeleteZona(null);
+    fetchZonas();
+  };
+
   const filteredPedidos = pedidos.filter((p) => {
     if (filtroEstado !== "todos" && p.estado !== filtroEstado) return false;
     if (filtroTipo !== "todos" && p.tipo !== filtroTipo) return false;
@@ -670,6 +738,16 @@ export default function AdminPanel() {
             <ShoppingBasket size={16} />
             Canastas
           </button>
+          <button
+            onClick={() => setTab("despacho")}
+            className={cn(
+              "flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors duration-150 min-h-[44px]",
+              tab === "despacho" ? "bg-green-700 text-white" : "text-muted hover:text-ink"
+            )}
+          >
+            <Truck size={16} />
+            Despacho
+          </button>
         </div>
 
         {tab === "pedidos" && (
@@ -765,6 +843,28 @@ export default function AdminPanel() {
             confirmDelete={confirmDeleteCanasta}
             setConfirmDelete={setConfirmDeleteCanasta}
             onDelete={handleDeleteCanasta}
+          />
+        )}
+
+        {tab === "despacho" && (
+          <DespachoZonasView
+            zonas={zonas}
+            showAdd={showAddZona}
+            setShowAdd={setShowAddZona}
+            newNombre={newZonaNombre}
+            setNewNombre={setNewZonaNombre}
+            newCosto={newZonaCosto}
+            setNewCosto={setNewZonaCosto}
+            onAdd={handleAddZona}
+            editing={editingZona}
+            setEditing={setEditingZona}
+            editValues={editZonaValues}
+            setEditValues={setEditZonaValues}
+            onSave={handleSaveZona}
+            onToggleActivo={handleToggleZonaActivo}
+            confirmDelete={confirmDeleteZona}
+            setConfirmDelete={setConfirmDeleteZona}
+            onDelete={handleDeleteZona}
           />
         )}
       </div>
@@ -1957,6 +2057,208 @@ function CanastasView({
               onCancelDelete={() => setConfirmDelete(null)}
               onConfirmDelete={() => onDelete(canasta.id)}
             />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+// ============ Despacho Zonas View ============
+function DespachoZonasView({
+  zonas, showAdd, setShowAdd, newNombre, setNewNombre, newCosto, setNewCosto, onAdd,
+  editing, setEditing, editValues, setEditValues, onSave, onToggleActivo,
+  confirmDelete, setConfirmDelete, onDelete,
+}: {
+  zonas: DespachoZona[];
+  showAdd: boolean;
+  setShowAdd: (v: boolean) => void;
+  newNombre: string;
+  setNewNombre: (v: string) => void;
+  newCosto: string | number;
+  setNewCosto: (v: string | number) => void;
+  onAdd: () => void;
+  editing: string | null;
+  setEditing: (v: string | null) => void;
+  editValues: Partial<DespachoZona>;
+  setEditValues: (v: Partial<DespachoZona>) => void;
+  onSave: (id: string) => void;
+  onToggleActivo: (id: string, activo: boolean) => void;
+  confirmDelete: string | null;
+  setConfirmDelete: (v: string | null) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <>
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-xs text-muted">
+          {zonas.filter((z) => z.activo).length} de {zonas.length} zonas activas
+        </p>
+        <button
+          onClick={() => setShowAdd(!showAdd)}
+          className={cn(
+            "flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-colors duration-150 min-h-[44px]",
+            showAdd ? "bg-gray-200 text-ink" : "bg-green-700 text-white hover:bg-green-600"
+          )}
+        >
+          {showAdd ? <X size={16} /> : <Plus size={16} />}
+          {showAdd ? "Cancelar" : "Agregar zona"}
+        </button>
+      </div>
+
+      {showAdd && (
+        <div className="bg-surface rounded-2xl border border-border p-5 mb-5 space-y-3 animate-fade-in">
+          <h3 className="font-heading font-semibold text-ink flex items-center gap-2">
+            <Plus size={18} className="text-green-700" /> Nueva zona
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Comuna *">
+              <input
+                type="text"
+                value={newNombre}
+                onChange={(e) => setNewNombre(e.target.value)}
+                className="admin-input"
+                placeholder="Ej: Huechuraba"
+              />
+            </Field>
+            <Field label="Costo de despacho ($)">
+              <input
+                type="number"
+                value={newCosto}
+                onChange={(e) => setNewCosto(e.target.value)}
+                className="admin-input"
+                placeholder="Ej: 2990"
+                min={0}
+              />
+            </Field>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={onAdd}
+              disabled={!newNombre.trim()}
+              className={cn(
+                "px-5 py-2.5 rounded-xl font-medium text-sm transition-colors duration-150 min-h-[44px]",
+                !newNombre.trim() ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-green-700 text-white hover:bg-green-600"
+              )}
+            >
+              Guardar zona
+            </button>
+          </div>
+        </div>
+      )}
+
+      {zonas.length === 0 ? (
+        <div className="text-center py-16 bg-surface rounded-2xl border border-border">
+          <Truck size={40} className="mx-auto text-muted mb-3" />
+          <p className="text-muted">No hay zonas de despacho. Agrega la primera.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {zonas.map((zona) => (
+            <div
+              key={zona.id}
+              className={cn(
+                "bg-surface rounded-2xl border p-4 flex flex-col gap-3 transition-colors duration-150",
+                zona.activo ? "border-border" : "border-dashed border-gray-300 opacity-70"
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                    zona.activo ? "bg-green-50 text-green-700" : "bg-subtle text-muted"
+                  )}>
+                    <MapPin size={18} />
+                  </span>
+                  <div className="min-w-0">
+                    {editing === zona.id ? (
+                      <input
+                        type="text"
+                        value={editValues.nombre ?? zona.nombre}
+                        onChange={(e) => setEditValues({ ...editValues, nombre: e.target.value })}
+                        className="admin-input"
+                        autoFocus
+                      />
+                    ) : (
+                      <p className="font-semibold text-ink truncate">{zona.nombre}</p>
+                    )}
+                  </div>
+                </div>
+                {zona.activo
+                  ? <CheckCircle size={18} className="text-green-600 shrink-0" aria-label="Activa" />
+                  : <XCircle size={18} className="text-gray-400 shrink-0" aria-label="Inactiva" />}
+              </div>
+
+              {editing === zona.id ? (
+                <div className="space-y-2">
+                  <Field label="Costo de despacho ($)">
+                    <input
+                      type="number"
+                      value={editValues.costo ?? zona.costo}
+                      onChange={(e) => setEditValues({ ...editValues, costo: Number(e.target.value) })}
+                      className="admin-input"
+                      min={0}
+                    />
+                  </Field>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => onSave(zona.id)}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-green-700 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-600 min-h-[40px]"
+                    >
+                      <Save size={15} /> Guardar
+                    </button>
+                    <button
+                      onClick={() => { setEditing(null); setEditValues({}); }}
+                      className="px-4 py-2 rounded-lg text-sm text-muted hover:bg-subtle min-h-[40px]"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-ink">
+                    {zona.costo === 0 ? "Despacho gratis" : formatPrice(zona.costo)}
+                  </p>
+
+                  {confirmDelete === zona.id ? (
+                    <div className="flex items-center justify-between gap-2 bg-red-50 rounded-xl px-3 py-2">
+                      <span className="text-sm text-red-700 font-medium">¿Eliminar zona?</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => onDelete(zona.id)} className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 min-h-[36px]">Sí</button>
+                        <button onClick={() => setConfirmDelete(null)} className="px-3 py-1.5 rounded-lg bg-gray-200 text-ink text-xs font-medium hover:bg-gray-300 min-h-[36px]">No</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 pt-1 border-t border-border mt-1">
+                      <button
+                        onClick={() => onToggleActivo(zona.id, zona.activo)}
+                        className={cn(
+                          "px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 min-h-[40px] mt-1",
+                          zona.activo
+                            ? "bg-green-100 text-green-700 hover:bg-gray-200 hover:text-ink"
+                            : "bg-gray-100 text-muted hover:bg-green-100 hover:text-green-700"
+                        )}
+                      >
+                        {zona.activo ? "Activa" : "Inactiva"}
+                      </button>
+                      <button
+                        onClick={() => { setEditing(zona.id); setEditValues({}); }}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm text-ink hover:bg-subtle min-h-[40px] mt-1"
+                      >
+                        <Edit3 size={15} /> Editar
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(zona.id)}
+                        className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm text-muted hover:text-red-600 hover:bg-red-50 min-h-[40px] mt-1"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           ))}
         </div>
       )}

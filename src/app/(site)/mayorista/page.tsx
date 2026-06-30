@@ -1,6 +1,6 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { CatalogoMayorista } from "@/components/mayorista/CatalogoMayorista";
-import type { Producto, DescuentoVolumen, EspecialidadConConteo } from "@/lib/supabase/types";
+import type { Producto, DescuentoVolumen, EspecialidadConConteo, DespachoZona } from "@/lib/supabase/types";
 
 async function getProductosMayorista(): Promise<Producto[]> {
   try {
@@ -9,7 +9,7 @@ async function getProductosMayorista(): Promise<Producto[]> {
       .from("productos")
       .select("*")
       .eq("activo", true)
-      .eq("disponible_mayorista", true)
+      .eq("disponible_minorista", true)
       .order("categoria")
       .order("nombre");
 
@@ -59,6 +59,22 @@ async function getEspecialidades(): Promise<EspecialidadConConteo[]> {
   }
 }
 
+async function getZonas(): Promise<DespachoZona[]> {
+  try {
+    const supabase = createServerClient();
+    const { data, error } = await supabase
+      .from("despacho_zonas")
+      .select("*")
+      .eq("activo", true)
+      .order("orden")
+      .order("nombre");
+    if (error) throw error;
+    return (data as DespachoZona[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
 async function getProductosPorEspecialidad(): Promise<Record<string, string[]>> {
   try {
     const supabase = createServerClient();
@@ -88,13 +104,14 @@ export default async function MayoristaPage({
 }: {
   searchParams: Promise<{ cat?: string }>;
 }) {
-  const [{ cat }, productos, descuentos, especialidades, productosPorEspecialidad] =
+  const [{ cat }, productos, descuentos, especialidades, productosPorEspecialidad, zonas] =
     await Promise.all([
       searchParams,
       getProductosMayorista(),
       getDescuentos(),
       getEspecialidades(),
       getProductosPorEspecialidad(),
+      getZonas(),
     ]);
 
   return (
@@ -104,6 +121,7 @@ export default async function MayoristaPage({
       especialidades={especialidades}
       productosPorEspecialidad={productosPorEspecialidad}
       initialSlug={cat ?? null}
+      zonas={zonas}
     />
   );
 }
