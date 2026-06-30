@@ -38,14 +38,14 @@ export function Header() {
             className="block py-2 md:py-0 text-ink hover:text-green-700 font-medium transition-colors duration-150"
             onClick={() => setMenuOpen(false)}
           >
-            Catálogo
+            Negocios
           </Link>
           <Link
             href="/mayorista"
             className="block py-2 md:py-0 text-ink hover:text-green-700 font-medium transition-colors duration-150"
             onClick={() => setMenuOpen(false)}
           >
-            Mayorista
+            Particulares
           </Link>
         </nav>
 
