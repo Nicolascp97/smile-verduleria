@@ -1,6 +1,10 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { CatalogoMayorista } from "@/components/mayorista/CatalogoMayorista";
-import type { Producto, DescuentoVolumen, EspecialidadConConteo, DespachoZona } from "@/lib/supabase/types";
+import type { Producto, DescuentoVolumen, DespachoZona, PromocionConProducto } from "@/lib/supabase/types";
+
+// Las promociones leen el interruptor global y el stock en cada visita,
+// para que los cambios del panel se reflejen al instante.
+export const dynamic = "force-dynamic";
 
 async function getProductosMayorista(): Promise<Producto[]> {
   try {
@@ -35,25 +39,32 @@ async function getDescuentos(): Promise<DescuentoVolumen[]> {
   }
 }
 
-async function getEspecialidades(): Promise<EspecialidadConConteo[]> {
+async function getPromociones(): Promise<PromocionConProducto[]> {
   try {
     const supabase = createServerClient();
+
+    // Respeta el interruptor global del admin.
+    const { data: config } = await supabase
+      .from("configuracion")
+      .select("valor")
+      .eq("clave", "promociones_activas")
+      .maybeSingle();
+
+    if (config?.valor !== "true") return [];
+
     const { data, error } = await supabase
-      .from("especialidades")
-      .select("*, producto_especialidad(count)")
+      .from("promociones")
+      .select("*, producto:productos(*)")
       .eq("activo", true)
-      .order("orden");
+      .order("orden")
+      .order("created_at");
 
     if (error) throw error;
-    if (!data) return [];
 
-    return data.map((e: Record<string, unknown>) => ({
-      ...(e as unknown as EspecialidadConConteo),
-      producto_count:
-        Array.isArray(e.producto_especialidad) && e.producto_especialidad.length > 0
-          ? (e.producto_especialidad[0] as { count: number }).count
-          : 0,
-    }));
+    // Solo promos cuyo producto siga activo.
+    return ((data as PromocionConProducto[]) ?? []).filter(
+      (promo) => promo.producto && promo.producto.activo
+    );
   } catch {
     return [];
   }
@@ -75,52 +86,19 @@ async function getZonas(): Promise<DespachoZona[]> {
   }
 }
 
-async function getProductosPorEspecialidad(): Promise<Record<string, string[]>> {
-  try {
-    const supabase = createServerClient();
-    const { data, error } = await supabase
-      .from("producto_especialidad")
-      .select("producto_id, especialidad:especialidades(slug)");
-
-    if (error) throw error;
-    if (!data) return {};
-
-    const map: Record<string, string[]> = {};
-    for (const row of data as unknown as Array<{ producto_id: string; especialidad: { slug: string } | { slug: string }[] | null }>) {
-      const esp = row.especialidad;
-      const slug = Array.isArray(esp) ? esp[0]?.slug : esp?.slug;
-      if (!slug) continue;
-      if (!map[slug]) map[slug] = [];
-      map[slug].push(row.producto_id);
-    }
-    return map;
-  } catch {
-    return {};
-  }
-}
-
-export default async function MayoristaPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ cat?: string }>;
-}) {
-  const [{ cat }, productos, descuentos, especialidades, productosPorEspecialidad, zonas] =
-    await Promise.all([
-      searchParams,
-      getProductosMayorista(),
-      getDescuentos(),
-      getEspecialidades(),
-      getProductosPorEspecialidad(),
-      getZonas(),
-    ]);
+export default async function MayoristaPage() {
+  const [productos, descuentos, promociones, zonas] = await Promise.all([
+    getProductosMayorista(),
+    getDescuentos(),
+    getPromociones(),
+    getZonas(),
+  ]);
 
   return (
     <CatalogoMayorista
       productos={productos}
       descuentos={descuentos}
-      especialidades={especialidades}
-      productosPorEspecialidad={productosPorEspecialidad}
-      initialSlug={cat ?? null}
+      promociones={promociones}
       zonas={zonas}
     />
   );

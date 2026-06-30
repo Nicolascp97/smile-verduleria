@@ -1,46 +1,27 @@
 "use client";
 
-import { useState, useMemo } from "react";
 import Image from "next/image";
 import { ProductGrid } from "@/components/catalog/ProductGrid";
-import { SpecialtyCarousel } from "@/components/mayorista/SpecialtyCarousel";
+import { ProductCard } from "@/components/catalog/ProductCard";
 import { Building2, Truck, Package, CalendarDays } from "lucide-react";
 import { DESPACHO_EMPRESAS } from "@/lib/despacho";
 import { formatPrice } from "@/lib/utils";
 import { DespachoParticularesCard } from "@/components/catalog/DespachoParticularesCard";
-import type { Producto, DescuentoVolumen, EspecialidadConConteo, DespachoZona } from "@/lib/supabase/types";
+import type { Producto, DescuentoVolumen, DespachoZona, PromocionConProducto } from "@/lib/supabase/types";
 
 interface CatalogoMayoristaProps {
   productos: Producto[];
   descuentos: DescuentoVolumen[];
-  especialidades: EspecialidadConConteo[];
-  productosPorEspecialidad: Record<string, string[]>;
-  initialSlug?: string | null;
+  promociones: PromocionConProducto[];
   zonas?: DespachoZona[];
 }
 
 export function CatalogoMayorista({
   productos,
   descuentos,
-  especialidades,
-  productosPorEspecialidad,
-  initialSlug,
+  promociones,
   zonas,
 }: CatalogoMayoristaProps) {
-  const [especialidadActiva, setEspecialidadActiva] = useState<string | null>(
-    () => (initialSlug && especialidades.some((e) => e.slug === initialSlug) ? initialSlug : null)
-  );
-
-  const productosFiltrados = useMemo(() => {
-    if (!especialidadActiva) return productos;
-    const ids = productosPorEspecialidad[especialidadActiva];
-    if (!ids || ids.length === 0) return [];
-    const idSet = new Set(ids);
-    return productos.filter((p) => idSet.has(p.id));
-  }, [productos, especialidadActiva, productosPorEspecialidad]);
-
-  const especialidadInfo = especialidades.find((e) => e.slug === especialidadActiva);
-
   return (
     <div>
       {/* Hero mayorista */}
@@ -97,25 +78,29 @@ export function CatalogoMayorista({
         </div>
       </section>
 
-      {/* Catálogo mayorista */}
+      {/* Promociones (administrable desde el panel) */}
+      {promociones.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 py-12">
+          <h2 className="font-heading text-2xl md:text-3xl font-bold text-ink mb-6">
+            Promociones
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {promociones.map((promo) => (
+              <div key={promo.id}>
+                <ProductCard producto={promo.producto} tipo="minorista" promo={promo} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Catálogo */}
       <section className="max-w-7xl mx-auto px-4 py-12">
         <h2 className="font-heading text-2xl md:text-3xl font-bold text-ink mb-6">
-          {especialidadInfo
-            ? `Productos para ${especialidadInfo.nombre} ${especialidadInfo.emoji}`
-            : "Todos los productos disponibles"}
+          Todos los productos disponibles
         </h2>
 
-        {especialidades.length > 0 && (
-          <div className="mb-8">
-            <SpecialtyCarousel
-              especialidades={especialidades}
-              selected={especialidadActiva}
-              onSelect={setEspecialidadActiva}
-            />
-          </div>
-        )}
-
-        <ProductGrid productos={productosFiltrados} tipo="minorista" />
+        <ProductGrid productos={productos} tipo="minorista" />
       </section>
     </div>
   );

@@ -1,18 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { ProductGrid } from "./ProductGrid";
-import { ProductCard } from "./ProductCard";
-import Link from "next/link";
-import { Truck, User, ShoppingBasket, X, Check, MessageCircle } from "lucide-react";
-import { FlagIcon } from "@/components/ui/FlagIcon";
+import { SpecialtyCarousel } from "@/components/mayorista/SpecialtyCarousel";
+import { Truck, ShoppingBasket, X, Check, MessageCircle } from "lucide-react";
 import { DESPACHO_EMPRESAS } from "@/lib/despacho";
 import { formatPrice } from "@/lib/utils";
 import { getWhatsAppUrl } from "@/lib/whatsapp";
 import { ClientMarquee } from "@/components/layout/ClientMarquee";
 import { DespachoEmpresasCard } from "./DespachoEmpresasCard";
-import type { Producto, PromocionConProducto, CanastaConItems, DespachoZona } from "@/lib/supabase/types";
+import type { Producto, CanastaConItems, DespachoZona, EspecialidadConConteo } from "@/lib/supabase/types";
 
 // Arma el mensaje de WhatsApp con el detalle de una canasta
 function mensajeCanastaWhatsApp(canasta: CanastaConItems): string {
@@ -34,13 +32,31 @@ function mensajeCanastaWhatsApp(canasta: CanastaConItems): string {
 
 interface CatalogoMinoristaProps {
   productos: Producto[];
-  promociones: PromocionConProducto[];
+  especialidades: EspecialidadConConteo[];
+  productosPorEspecialidad: Record<string, string[]>;
   canastas: CanastaConItems[];
   zonas?: DespachoZona[];
 }
 
-export function CatalogoMinorista({ productos, promociones, canastas, zonas }: CatalogoMinoristaProps) {
+export function CatalogoMinorista({
+  productos,
+  especialidades,
+  productosPorEspecialidad,
+  canastas,
+  zonas,
+}: CatalogoMinoristaProps) {
   const [canastaSel, setCanastaSel] = useState<CanastaConItems | null>(null);
+  const [especialidadActiva, setEspecialidadActiva] = useState<string | null>(null);
+
+  const productosFiltrados = useMemo(() => {
+    if (!especialidadActiva) return productos;
+    const ids = productosPorEspecialidad[especialidadActiva];
+    if (!ids || ids.length === 0) return [];
+    const idSet = new Set(ids);
+    return productos.filter((p) => idSet.has(p.id));
+  }, [productos, especialidadActiva, productosPorEspecialidad]);
+
+  const especialidadInfo = especialidades.find((e) => e.slug === especialidadActiva);
 
   // Mientras el popup esté abierto, avisa al chat flotante para que se oculte
   useEffect(() => {
@@ -79,39 +95,7 @@ export function CatalogoMinorista({ productos, promociones, canastas, zonas }: C
             </p>
           </div>
 
-          {/* Categorías */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto mb-8">
-            <a
-              href="#catalogo"
-              className="bg-white/90 backdrop-blur-sm border-2 border-green-700 rounded-2xl px-4 py-5 flex flex-col items-center gap-2 hover:bg-white hover:shadow-lg transition-all duration-200"
-            >
-              <User size={28} className="text-green-700" />
-              <span className="font-semibold text-ink text-sm">Particular</span>
-            </a>
-            <Link
-              href="/mayorista?cat=chilena"
-              className="bg-white/90 backdrop-blur-sm border border-border rounded-2xl px-4 py-5 flex flex-col items-center gap-2 hover:bg-white hover:shadow-lg transition-all duration-200"
-            >
-              <FlagIcon code="cl" label="Bandera de Chile" size={32} />
-              <span className="font-semibold text-ink text-sm text-center">Gastronomía Chilena</span>
-            </Link>
-            <Link
-              href="/mayorista?cat=china"
-              className="bg-white/90 backdrop-blur-sm border border-border rounded-2xl px-4 py-5 flex flex-col items-center gap-2 hover:bg-white hover:shadow-lg transition-all duration-200"
-            >
-              <FlagIcon code="cn" label="Bandera de China" size={32} />
-              <span className="font-semibold text-ink text-sm text-center">Gastronomía China Coreana</span>
-            </Link>
-            <Link
-              href="/mayorista?cat=peruana"
-              className="bg-white/90 backdrop-blur-sm border border-border rounded-2xl px-4 py-5 flex flex-col items-center gap-2 hover:bg-white hover:shadow-lg transition-all duration-200"
-            >
-              <FlagIcon code="pe" label="Bandera de Perú" size={32} />
-              <span className="font-semibold text-ink text-sm text-center">Gastronomía Peruana</span>
-            </Link>
-          </div>
-
-          {/* Canastas predeterminadas (debajo de Particular) */}
+          {/* Canastas predeterminadas */}
           {canastas.length > 0 && (
             <div className="flex flex-col sm:flex-row justify-center gap-4 max-w-xl mx-auto">
               {canastas.map((canasta) => (
@@ -170,28 +154,25 @@ export function CatalogoMinorista({ productos, promociones, canastas, zonas }: C
         </div>
       </section>
 
-      {/* Promociones (administrable desde el panel) */}
-      {promociones.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 py-12">
-          <h2 className="font-heading text-2xl md:text-3xl font-bold text-ink mb-6">
-            Promociones
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {promociones.map((promo) => (
-              <div key={promo.id}>
-                <ProductCard producto={promo.producto} tipo="minorista" promo={promo} />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Catálogo completo */}
+      {/* Catálogo completo con selector de especialidades */}
       <section id="catalogo" className="max-w-7xl mx-auto px-4 py-12">
         <h2 className="font-heading text-2xl md:text-3xl font-bold text-ink mb-6">
-          Todos los productos
+          {especialidadInfo
+            ? `Productos para ${especialidadInfo.nombre} ${especialidadInfo.emoji}`
+            : "Todos los productos"}
         </h2>
-        <ProductGrid productos={productos} tipo="mayorista" />
+
+        {especialidades.length > 0 && (
+          <div className="mb-8">
+            <SpecialtyCarousel
+              especialidades={especialidades}
+              selected={especialidadActiva}
+              onSelect={setEspecialidadActiva}
+            />
+          </div>
+        )}
+
+        <ProductGrid productos={productosFiltrados} tipo="mayorista" />
       </section>
 
       {/* Popup detalle de canasta */}

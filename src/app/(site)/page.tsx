@@ -1,6 +1,6 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { CatalogoMinorista } from "@/components/catalog/CatalogoMinorista";
-import type { Producto, PromocionConProducto, CanastaConItems, DespachoZona } from "@/lib/supabase/types";
+import type { Producto, CanastaConItems, DespachoZona, EspecialidadConConteo } from "@/lib/supabase/types";
 
 // La home lee promociones, el interruptor global y el stock en cada visita,
 // para que los cambios hechos desde el panel se reflejen al instante.
@@ -23,34 +23,51 @@ async function getProductos(): Promise<Producto[]> {
   }
 }
 
-async function getPromociones(): Promise<PromocionConProducto[]> {
+async function getEspecialidades(): Promise<EspecialidadConConteo[]> {
   try {
     const supabase = createServerClient();
-
-    // Respeta el interruptor global del admin.
-    const { data: config } = await supabase
-      .from("configuracion")
-      .select("valor")
-      .eq("clave", "promociones_activas")
-      .maybeSingle();
-
-    if (config?.valor !== "true") return [];
-
     const { data, error } = await supabase
-      .from("promociones")
-      .select("*, producto:productos(*)")
+      .from("especialidades")
+      .select("*, producto_especialidad(count)")
       .eq("activo", true)
-      .order("orden")
-      .order("created_at");
+      .order("orden");
 
     if (error) throw error;
+    if (!data) return [];
 
-    // Solo promos cuyo producto siga activo.
-    return ((data as PromocionConProducto[]) ?? []).filter(
-      (promo) => promo.producto && promo.producto.activo
-    );
+    return data.map((e: Record<string, unknown>) => ({
+      ...(e as unknown as EspecialidadConConteo),
+      producto_count:
+        Array.isArray(e.producto_especialidad) && e.producto_especialidad.length > 0
+          ? (e.producto_especialidad[0] as { count: number }).count
+          : 0,
+    }));
   } catch {
     return [];
+  }
+}
+
+async function getProductosPorEspecialidad(): Promise<Record<string, string[]>> {
+  try {
+    const supabase = createServerClient();
+    const { data, error } = await supabase
+      .from("producto_especialidad")
+      .select("producto_id, especialidad:especialidades(slug)");
+
+    if (error) throw error;
+    if (!data) return {};
+
+    const map: Record<string, string[]> = {};
+    for (const row of data as unknown as Array<{ producto_id: string; especialidad: { slug: string } | { slug: string }[] | null }>) {
+      const esp = row.especialidad;
+      const slug = Array.isArray(esp) ? esp[0]?.slug : esp?.slug;
+      if (!slug) continue;
+      if (!map[slug]) map[slug] = [];
+      map[slug].push(row.producto_id);
+    }
+    return map;
+  } catch {
+    return {};
   }
 }
 
@@ -92,17 +109,20 @@ async function getZonas(): Promise<DespachoZona[]> {
 }
 
 export default async function HomePage() {
-  const [productos, promociones, canastas, zonas] = await Promise.all([
-    getProductos(),
-    getPromociones(),
-    getCanastas(),
-    getZonas(),
-  ]);
+  const [productos, especialidades, productosPorEspecialidad, canastas, zonas] =
+    await Promise.all([
+      getProductos(),
+      getEspecialidades(),
+      getProductosPorEspecialidad(),
+      getCanastas(),
+      getZonas(),
+    ]);
 
   return (
     <CatalogoMinorista
       productos={productos}
-      promociones={promociones}
+      especialidades={especialidades}
+      productosPorEspecialidad={productosPorEspecialidad}
       canastas={canastas}
       zonas={zonas}
     />
