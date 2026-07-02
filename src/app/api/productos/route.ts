@@ -112,6 +112,39 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
+export async function PUT(req: NextRequest) {
+  const denied = adminAuth(req);
+  if (denied) return denied;
+
+  try {
+    const { catalogo, ids } = await req.json();
+
+    if (catalogo !== "mayorista" && catalogo !== "minorista") {
+      return NextResponse.json({ error: "Catálogo inválido" }, { status: 400 });
+    }
+    if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string")) {
+      return NextResponse.json({ error: "Falta el arreglo de ids" }, { status: 400 });
+    }
+
+    const col = catalogo === "mayorista" ? "orden_mayorista" : "orden_minorista";
+    const supabase = createServerClient();
+
+    // Persiste el nuevo orden: la posición en el arreglo es el valor de orden.
+    for (let i = 0; i < ids.length; i++) {
+      const { error } = await supabase
+        .from("productos")
+        .update({ [col]: i + 1 })
+        .eq("id", ids[i]);
+      if (error) throw error;
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[API Productos] Error PUT:", err);
+    return NextResponse.json({ error: "Error al reordenar productos" }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   const denied = adminAuth(req);
   if (denied) return denied;

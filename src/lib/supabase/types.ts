@@ -44,6 +44,8 @@ export interface Producto {
   imagen_url: string | null;
   destacado: boolean;
   activo: boolean;
+  orden_mayorista: number;
+  orden_minorista: number;
 }
 
 export interface PedidoItem {

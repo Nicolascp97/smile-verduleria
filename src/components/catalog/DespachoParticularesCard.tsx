@@ -1,4 +1,4 @@
-import { User, CalendarDays, Clock, Truck, MapPin, Info } from "lucide-react";
+import { User, CalendarDays, Clock, Truck, MapPin, Info, Package } from "lucide-react";
 import { DESPACHO_PARTICULARES } from "@/lib/despacho";
 import { formatPrice } from "@/lib/utils";
 import type { DespachoZona } from "@/lib/supabase/types";
@@ -52,6 +52,14 @@ export function DespachoParticularesCard({ zonas }: Props) {
           <div>
             <p className="font-semibold text-ink text-sm">Costo de despacho: {formatPrice(DESPACHO_PARTICULARES.costo)}</p>
             <p className="text-xs text-muted mt-0.5">Tarifa fija por pedido</p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 bg-green-50 rounded-xl px-4 py-3">
+          <Package size={20} className="text-green-700 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-ink text-sm">Despacho gratis sobre {formatPrice(DESPACHO_PARTICULARES.despachoGratisDesde)}</p>
+            <p className="text-xs text-muted mt-0.5">En pedidos sobre ese monto no pagas despacho</p>
           </div>
         </div>
 

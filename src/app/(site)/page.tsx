@@ -1,6 +1,6 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { CatalogoMinorista } from "@/components/catalog/CatalogoMinorista";
-import type { Producto, CanastaConItems, DespachoZona, EspecialidadConConteo } from "@/lib/supabase/types";
+import type { Producto, DespachoZona, EspecialidadConConteo } from "@/lib/supabase/types";
 
 // La home lee promociones, el interruptor global y el stock en cada visita,
 // para que los cambios hechos desde el panel se reflejen al instante.
@@ -14,6 +14,7 @@ async function getProductos(): Promise<Producto[]> {
       .select("*")
       .eq("activo", true)
       .eq("disponible_mayorista", true)
+      .order("orden_mayorista")
       .order("nombre");
 
     if (error) throw error;
@@ -71,27 +72,6 @@ async function getProductosPorEspecialidad(): Promise<Record<string, string[]>> 
   }
 }
 
-async function getCanastas(): Promise<CanastaConItems[]> {
-  try {
-    const supabase = createServerClient();
-    const { data, error } = await supabase
-      .from("canastas")
-      .select("*, items:canasta_items(*, producto:productos(nombre, formato))")
-      .eq("activo", true)
-      .order("orden")
-      .order("created_at");
-
-    if (error) throw error;
-
-    return ((data as CanastaConItems[]) ?? []).map((c) => ({
-      ...c,
-      items: (c.items ?? []).slice().sort((a, b) => a.orden - b.orden),
-    }));
-  } catch {
-    return [];
-  }
-}
-
 async function getZonas(): Promise<DespachoZona[]> {
   try {
     const supabase = createServerClient();
@@ -109,12 +89,11 @@ async function getZonas(): Promise<DespachoZona[]> {
 }
 
 export default async function HomePage() {
-  const [productos, especialidades, productosPorEspecialidad, canastas, zonas] =
+  const [productos, especialidades, productosPorEspecialidad, zonas] =
     await Promise.all([
       getProductos(),
       getEspecialidades(),
       getProductosPorEspecialidad(),
-      getCanastas(),
       getZonas(),
     ]);
 
@@ -123,7 +102,6 @@ export default async function HomePage() {
       productos={productos}
       especialidades={especialidades}
       productosPorEspecialidad={productosPorEspecialidad}
-      canastas={canastas}
       zonas={zonas}
     />
   );

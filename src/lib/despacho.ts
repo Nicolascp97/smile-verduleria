@@ -5,6 +5,7 @@ export const DESPACHO_PARTICULARES = {
   dia: "Sábado",
   horario: "9:00 a 17:00",
   costo: 2990,
+  despachoGratisDesde: 50000,
   // Pendiente de confirmar: anticipación del pedido para particulares.
   comunas: [
     "Huechuraba",

@@ -30,7 +30,26 @@ import {
   Camera,
   ShoppingBasket,
   Truck,
+  GripVertical,
+  ArrowUpDown,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import Image from "next/image";
 import type {
   Pedido,
@@ -355,6 +374,19 @@ export default function AdminPanel() {
       method: "PATCH",
       headers: adminHeaders(),
       body: JSON.stringify({ id, stock: currentStock > 0 ? 0 : 1 }),
+    });
+    fetchProductos();
+  };
+
+  // Persiste el nuevo orden de un catálogo (mayorista=Negocios, minorista=Particulares).
+  const handleReorderProductos = async (
+    catalogo: "mayorista" | "minorista",
+    ids: string[]
+  ) => {
+    await fetch("/api/productos", {
+      method: "PUT",
+      headers: adminHeaders(),
+      body: JSON.stringify({ catalogo, ids }),
     });
     fetchProductos();
   };
@@ -766,6 +798,8 @@ export default function AdminPanel() {
         {tab === "productos" && (
           <ProductosView
             productos={filteredProductos}
+            productosTodos={productos}
+            onReorder={handleReorderProductos}
             totalProductos={productos.length}
             busqueda={busquedaProd}
             setBusqueda={setBusquedaProd}
@@ -1018,12 +1052,14 @@ function PedidosView({
 type NewProductState = typeof EMPTY_NEW_PRODUCT;
 
 function ProductosView({
-  productos, totalProductos, busqueda, setBusqueda, filtroCategoria, setFiltroCategoria,
+  productos, productosTodos, onReorder, totalProductos, busqueda, setBusqueda, filtroCategoria, setFiltroCategoria,
   showAddForm, setShowAddForm, newProduct, setNewProduct, onAddProduct,
   editingProduct, setEditingProduct, editValues, setEditValues, onSaveProduct,
   confirmDelete, setConfirmDelete, onDeleteProduct, onToggleStock, uploadFoto,
 }: {
   productos: Producto[];
+  productosTodos: Producto[];
+  onReorder: (catalogo: "mayorista" | "minorista", ids: string[]) => Promise<void>;
   totalProductos: number;
   busqueda: string;
   setBusqueda: (v: string) => void;
@@ -1045,8 +1081,43 @@ function ProductosView({
   onToggleStock: (id: string, stock: number) => void;
   uploadFoto: (file: File, nombre: string) => Promise<string | null>;
 }) {
+  const [modo, setModo] = useState<"editar" | "mayorista" | "minorista">("editar");
+
   return (
     <>
+      {/* Selector de modo: editar o reordenar cada catálogo */}
+      <div className="inline-flex bg-subtle rounded-xl p-1 mb-5 gap-1 flex-wrap">
+        {([
+          { value: "editar", label: "Editar productos", icon: Edit3 },
+          { value: "mayorista", label: "Ordenar Negocios", icon: ArrowUpDown },
+          { value: "minorista", label: "Ordenar Particulares", icon: ArrowUpDown },
+        ] as const).map((m) => {
+          const Icono = m.icon;
+          return (
+            <button
+              key={m.value}
+              onClick={() => setModo(m.value)}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 min-h-[40px]",
+                modo === m.value ? "bg-green-700 text-white" : "text-muted hover:text-ink"
+              )}
+            >
+              <Icono size={15} />
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {modo !== "editar" ? (
+        <OrdenProductos
+          key={modo}
+          catalogo={modo}
+          productosTodos={productosTodos}
+          onReorder={onReorder}
+        />
+      ) : (
+      <>
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <div className="relative flex-1">
@@ -1164,7 +1235,152 @@ function ProductosView({
           ))}
         </div>
       )}
+      </>
+      )}
     </>
+  );
+}
+
+// ============ Orden de productos (drag & drop) ============
+function OrdenProductos({
+  catalogo,
+  productosTodos,
+  onReorder,
+}: {
+  catalogo: "mayorista" | "minorista";
+  productosTodos: Producto[];
+  onReorder: (catalogo: "mayorista" | "minorista", ids: string[]) => Promise<void>;
+}) {
+  const disponibleKey = catalogo === "mayorista" ? "disponible_mayorista" : "disponible_minorista";
+  const ordenKey = catalogo === "mayorista" ? "orden_mayorista" : "orden_minorista";
+
+  const listaOrdenada = useMemo(() => {
+    return productosTodos
+      .filter((p) => p[disponibleKey])
+      .slice()
+      .sort((a, b) => a[ordenKey] - b[ordenKey] || a.nombre.localeCompare(b.nombre));
+  }, [productosTodos, disponibleKey, ordenKey]);
+
+  const [items, setItems] = useState<Producto[]>(listaOrdenada);
+  const [guardando, setGuardando] = useState(false);
+  const [guardado, setGuardado] = useState(false);
+
+  // Resincroniza cuando cambian los productos del padre (ej. tras refetch).
+  useEffect(() => {
+    setItems(listaOrdenada);
+  }, [listaOrdenada]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = items.findIndex((p) => p.id === active.id);
+    const newIndex = items.findIndex((p) => p.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const nuevos = arrayMove(items, oldIndex, newIndex);
+    setItems(nuevos);
+    setGuardando(true);
+    setGuardado(false);
+    try {
+      await onReorder(catalogo, nuevos.map((p) => p.id));
+      setGuardado(true);
+      setTimeout(() => setGuardado(false), 2000);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const etiqueta = catalogo === "mayorista" ? "Negocios" : "Particulares";
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <p className="text-sm text-muted">
+          Arrastra los productos para definir el orden en <strong className="text-ink">{etiqueta}</strong>.
+          {" "}Se guarda automáticamente.
+        </p>
+        <span className="text-xs font-medium shrink-0">
+          {guardando ? (
+            <span className="text-muted flex items-center gap-1"><RefreshCw size={13} className="animate-spin" /> Guardando…</span>
+          ) : guardado ? (
+            <span className="text-green-700 flex items-center gap-1"><CheckCircle size={13} /> Guardado</span>
+          ) : null}
+        </span>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="text-center py-16 bg-surface rounded-2xl border border-border">
+          <Boxes size={40} className="mx-auto text-muted mb-3" />
+          <p className="text-muted">No hay productos disponibles en este catálogo</p>
+        </div>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={items.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+            <div className="flex flex-col gap-2">
+              {items.map((p, i) => (
+                <SortableProductoRow key={p.id} producto={p} posicion={i + 1} />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
+    </div>
+  );
+}
+
+function SortableProductoRow({ producto, posicion }: { producto: Producto; posicion: number }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: producto.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center gap-3 bg-surface rounded-xl border border-border p-2.5 pr-4",
+        isDragging && "shadow-lg border-green-700"
+      )}
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-label={`Mover ${producto.nombre}`}
+        className="shrink-0 p-1.5 rounded-lg text-muted hover:text-ink hover:bg-subtle cursor-grab active:cursor-grabbing touch-none"
+      >
+        <GripVertical size={18} />
+      </button>
+
+      <span className="shrink-0 w-6 text-center text-xs font-semibold text-muted tabular-nums">{posicion}</span>
+
+      <div className="shrink-0 w-11 h-11 rounded-lg bg-subtle overflow-hidden relative">
+        {producto.imagen_url ? (
+          <Image src={producto.imagen_url} alt={producto.nombre} fill sizes="44px" className="object-cover" />
+        ) : (
+          <span className="w-full h-full flex items-center justify-center">
+            <Package size={18} className="text-muted" />
+          </span>
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-ink text-sm truncate">{producto.nombre}</p>
+        <p className="text-xs text-muted capitalize truncate">
+          {CATEGORIA_META[producto.categoria].label} · {producto.formato}
+        </p>
+      </div>
+    </div>
   );
 }
 
